@@ -1,0 +1,163 @@
+<div class="dashboard-layout">
+  <app-sidebar></app-sidebar>
+
+  <div class="main-content-area">
+    <app-header (actionCreer)="ouvrirCreation()"></app-header>
+    
+    <div class="page-body">
+      <div class="dashboard-action-bar">
+        <div class="welcome-text">
+          <h1>Gestion des Villes</h1>
+          <p>Configurez et listez les zones géographiques, régions et gares de départ/arrivée de vos trajets.</p>
+        </div>
+        
+        <button class="btn-blue-action-local" (click)="ouvrirCreation()">
+          <span class="material-icons">location_city</span>
+          NOUVELLE VILLE
+        </button>
+      </div>
+
+      <!-- Barre de Recherche -->
+      <div class="search-bar">
+        <span class="material-icons">search</span>
+        <input
+          type="text"
+          placeholder="Rechercher par nom de ville ou par région..."
+          [(ngModel)]="valeurSaisi"
+          (input)="filtrerVilles()"
+        />
+      </div>
+
+      <!-- Tableau des Villes -->
+      <div class="table-container-villes">
+        <table class="custom-villes-table">
+          <thead>
+            <tr>
+              <th>ID VILLE</th>
+              <th>NOM DE LA VILLE</th>
+              <th>RÉGION / SECTEUR</th>
+              <th class="text-center">ACTIONS</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (ville of villesAffichees; track ville.id) {
+              <tr>
+                <td>
+                  <span class="ville-id-tag">#VL-{{ ville.id?.substring(0,5) || 'N/A' }}</span>
+                </td>
+                <td>
+                  <div class="ville-name-cell">
+                    <span class="material-icons city-icon">place</span>
+                    <span class="ville-title">{{ ville.nomVille }}</span>
+                  </div>
+                </td>
+                <td>
+                  <span class="region-badge">{{ ville.region }}</span>
+                </td>
+                <td class="text-center actions-cell">
+                  <div class="actions-wrapper">
+                    <button class="btn-table-action edit" (click)="ouvrirEdit(ville)" title="Modifier la ville">
+                      <span class="material-icons">edit</span>
+                    </button>
+                    <button class="btn-table-action delete" (click)="supprimerVille(ville.id, ville.nomVille)" title="Supprimer la ville">
+                      <span class="material-icons">delete</span>
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            } @empty {
+              <tr>
+                <td colspan="4" class="text-center py-8">
+                  <div class="empty-state">
+                    <span class="material-icons font-size-xl">map</span>
+                    <p>Aucune ville ne correspond à votre recherche.</p>
+                  </div>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Pagination -->
+      <div class="pagination-container">
+        <span class="pagination-info">
+          Affichage de {{ villesAffichees.length }} sur {{ totalVilles }} ville(s)
+        </span>
+        <div class="pagination-buttons">
+          <button class="btn-pag" [disabled]="pageActuelle === 1" (click)="pagePrecedente()">
+            <span class="material-icons">chevron_left</span>
+          </button>
+          @for (p of [].constructor(totalPages); track $index) {
+            <button 
+              class="btn-pag" 
+              [class.active]="pageActuelle === $index + 1"
+              (click)="changerPage($index + 1)">
+              {{ $index + 1 }}
+            </button>
+          }
+          <button class="btn-pag" [disabled]="pageActuelle === totalPages" (click)="pageSuivante()">
+            <span class="material-icons">chevron_right</span>
+          </button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- ==========================================
+     MODALE DE CRÉATION DE VILLE (HTML/CSS)
+     ========================================== -->
+<div class="custom-modal-backdrop" *ngIf="afficherCreationVille">
+  <div class="custom-modal-box">
+    <div class="modal-header">
+      <h2>Ajouter une nouvelle ville</h2>
+      <button class="close-icon-btn" (click)="afficherCreationVille = false">
+        <span class="material-icons">close</span>
+      </button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label>Nom de la Ville</label>
+        <input type="text" [(ngModel)]="nouvelleVille.nomVille" placeholder="Ex: Lomé, Paris, Ouagadougou...">
+      </div>
+      <div class="form-group">
+        <label>Région / Province</label>
+        <input type="text" [(ngModel)]="nouvelleVille.region" placeholder="Ex: Maritime, Île-de-France...">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-secondary" (click)="afficherCreationVille = false">Annuler</button>
+      <button class="btn-primary" (click)="soumettreCreation()">Enregistrer</button>
+    </div>
+  </div>
+</div>
+
+<!-- ==========================================
+     MODALE DE MODIFICATION DE VILLE (HTML/CSS)
+     ========================================== -->
+<div class="custom-modal-backdrop" *ngIf="afficherEditVille && villeEditer">
+  <div class="custom-modal-box">
+    <div class="modal-header">
+      <h2>Modifier la ville</h2>
+      <button class="close-icon-btn" (click)="afficherEditVille = false; villeEditer = null">
+        <span class="material-icons">close</span>
+      </button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label>Nom de la Ville</label>
+        <input type="text" [(ngModel)]="villeEditer.nomVille">
+      </div>
+      <div class="form-group">
+        <label>Région / Province</label>
+        <input type="text" [(ngModel)]="villeEditer.region">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-secondary" (click)="afficherEditVille = false; villeEditer = null">Annuler</button>
+      <button class="btn-primary" (click)="soumettreModification()">Enregistrer les modifications</button>
+    </div>
+  </div>
+</div>

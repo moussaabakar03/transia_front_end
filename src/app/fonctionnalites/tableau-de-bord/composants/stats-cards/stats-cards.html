@@ -1,0 +1,31 @@
+<div class="stats-grid">
+  <div class="stat-card card-departs">
+    <div class="stat-icon-wrapper">
+      <span class="material-icons">local_shipping</span>
+    </div>
+    <div class="stat-info">
+      <span class="stat-label">Départs aujourd'hui</span>
+      <span class="stat-value">{{ kpi.departsAujourdhui }}</span>
+    </div>
+  </div>
+
+  <div class="stat-card card-attente">
+    <div class="stat-icon-wrapper">
+      <span class="material-icons">pending_actions</span>
+    </div>
+    <div class="stat-info">
+      <span class="stat-label">Réservations en attente</span>
+      <span class="stat-value">{{ kpi.reservationsEnAttente }}</span>
+    </div>
+  </div>
+
+  <div class="stat-card card-revenus">
+    <div class="stat-icon-wrapper">
+      <span class="material-icons">payments</span>
+    </div>
+    <div class="stat-info">
+      <span class="stat-label">Revenus ce mois</span>
+      <span class="stat-value">{{ kpi.revenusMois | number:'1.0-0' }} FCFA</span>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,104 @@
+<div class="projets-container">
+  
+  <div class="dashboard-table-card">
+    <div class="projets-header">
+      <h3>Prochains Départs</h3>
+    </div>
+
+    <div class="table-wrapper">
+      <table class="projets-table">
+        <thead>
+          <tr>
+            <th>Ligne / Itinéraire</th>
+            <th>Date de départ</th>
+            <th>Heure</th>
+            <th>Places dispo.</th>
+          </tr>
+        </thead>
+        <tbody>
+          @if (prochainsDeparts && prochainsDeparts.length > 0) {
+            @for (t of prochainsDeparts; track t.id) {
+              <tr>
+                <td style="font-weight: 700; color: #1e293b;">
+                  {{ t.villeDepart?.nomVille }} → {{ t.villeArrivee?.nomVille }}
+                </td>
+                <td>{{ t.dateDepart | date:'dd/MM/yyyy' }}</td>
+                <td><span style="background: #f1f5f9; padding: 4px 8px; border-radius: 6px;">{{ t.heureDepart }}</span></td>
+                <!-- <td style="font-weight: 700;">{{ dispoMap[t.id || ''] ?? t.vehicule?.capacite ?? '?' }}</td> -->
+                 <td>-</td>
+              </tr>
+            }
+          } @else {
+            <tr class="empty-state-row">
+              <td colspan="4">
+                <div class="empty-state-content">
+                  <span class="material-icons">schedule</span>
+                  <p>Aucun départ programmé à venir.</p>
+                </div>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="dashboard-table-card">
+    <div class="projets-header">
+      <h3>Dernières Réservations de Transport</h3>
+    </div>
+
+    <div class="table-wrapper">
+      <table class="projets-table">
+        <thead>
+          <tr>
+            <th>Client Responsable</th>
+            <th>Ligne / Trajet</th>
+            <th>Date Réservation</th>
+            <th style="text-align: center;">Places</th>
+            <th>Statut</th>
+            <th>Montant Total</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (res of reservations; track res.id) {
+            <tr>
+              <td style="font-weight: 700;">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                  <span class="material-icons" style="color: #94a3b8; font-size: 18px;">account_circle</span>
+                  {{ res.nomResponsable }}
+                </div>
+              </td>
+              <td>{{ getTrajetDescription(res.trajetId) }}</td>
+              <td style="color: #94a3b8;">{{ res.dateReservation | date:'dd/MM à HH:mm' }}</td>
+              <td style="text-align: center; font-weight: 700;">{{ res.nombrePlace }}</td>
+              <td>
+                <span class="px-2.5 py-1 rounded-full text-[10px]"
+                      [ngClass]="{
+                        'bg-emerald-50 text-emerald-600': res.statut === 'CONFIRMEE',
+                        'bg-amber-50 text-amber-600': res.statut === 'EN_ATTENTE',
+                        'bg-rose-50 text-rose-600': res.statut === 'ANNULEE'
+                      }" style="font-weight: 800; text-transform: uppercase;">
+                  {{ res.statut }}
+                </span>
+              </td>
+              <td class="text-blue-600 font-extrabold">
+                {{ ((getTarifTrajet?.(res.trajetId) || 0) * res.nombrePlace) | number }} FCFA
+              </td>
+            </tr>
+          } @empty {
+            <tr class="empty-state-row">
+              <td colspan="6">
+                <div class="empty-state-content">
+                  <span class="material-icons">history</span>
+                  <p>Aucune réservation récente enregistrée.</p>
+                </div>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+</div>

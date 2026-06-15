@@ -1,0 +1,448 @@
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600;700&family=DM+Sans:wght@300;400;500;600&display=swap');
+
+// ── Variables ────────────────────────────────────────────────────────────────
+$gold: #8B7313;
+$gold-light: #C9A84C;
+$gold-pale: #F5EFD6;
+$gold-dark: #5C4D0A;
+$dark: #0F0E0B;
+$dark-2: #1A1810;
+$surface: #FAFAF7;
+$text: #1A1A1A;
+$text-muted: #888;
+$red: #C0392B;
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+// ══ SPLASH SCREEN ════════════════════════════════════════════════════════════
+.splash-screen {
+  position: fixed;
+  inset: 0;
+  background: $dark;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  opacity: 1;
+  transition: opacity 0.6s ease;
+
+  &.fading { opacity: 0; }
+}
+
+.splash-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 24px;
+}
+
+.splash-logo-ring {
+  position: relative;
+  width: 120px;
+  height: 120px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.splash-ring {
+  position: absolute;
+  border-radius: 50%;
+  border: 1.5px solid transparent;
+  animation: ringPulse 2s ease-in-out infinite;
+
+  &.ring-1 {
+    width: 120px; height: 120px;
+    border-color: rgba($gold, 0.15);
+    animation-delay: 0s;
+  }
+  &.ring-2 {
+    width: 90px; height: 90px;
+    border-color: rgba($gold, 0.3);
+    animation-delay: 0.2s;
+  }
+  &.ring-3 {
+    width: 64px; height: 64px;
+    border-color: rgba($gold, 0.6);
+    animation-delay: 0.4s;
+  }
+}
+
+@keyframes ringPulse {
+  0%, 100% { transform: scale(1); opacity: 0.6; }
+  50% { transform: scale(1.05); opacity: 1; }
+}
+
+.splash-logo-inner {
+  width: 48px; height: 48px;
+  background: linear-gradient(135deg, $gold, $gold-light);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 0 30px rgba($gold, 0.4);
+  animation: logoAppear 0.8s ease forwards;
+}
+
+@keyframes logoAppear {
+  from { transform: scale(0.5); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+.splash-logo-letter {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: #fff;
+}
+
+.splash-brand {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  animation: fadeUp 0.8s 0.4s ease both;
+}
+
+.splash-name {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 2rem;
+  font-weight: 700;
+  color: #fff;
+  letter-spacing: 0.25em;
+}
+
+.splash-tagline {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.72rem;
+  font-weight: 300;
+  color: $gold-light;
+  letter-spacing: 0.4em;
+  text-transform: uppercase;
+  margin-top: 2px;
+}
+
+.splash-loader {
+  width: 160px;
+  height: 2px;
+  background: rgba(#fff, 0.1);
+  border-radius: 2px;
+  overflow: hidden;
+  animation: fadeUp 0.8s 0.6s ease both;
+}
+
+.splash-loader-bar {
+  height: 100%;
+  background: linear-gradient(90deg, $gold-dark, $gold-light);
+  border-radius: 2px;
+  animation: loadBar 1.8s 0.3s ease forwards;
+  width: 0;
+}
+
+@keyframes loadBar {
+  0% { width: 0; }
+  60% { width: 75%; }
+  100% { width: 100%; }
+}
+
+
+.splash-name, .brand-name {
+  .big-letter {
+    font-size: 1.4em;    
+    font-weight: 800;
+    display: inline-block;
+    // Légère translation pour alignement vertical si nécessaire
+    // vertical-align: middle;
+  }
+}
+
+// .splash-name, .brand-name {
+//   .big-letter {
+//     font-size: 1.6em;
+//     margin: 0 -0.02em; // compression légère
+//   }
+// }
+
+// ══ PAGE LOGIN ════════════════════════════════════════════════════════════════
+.login-page {
+  display: flex;
+  min-height: 100vh;
+  font-family: 'DM Sans', sans-serif;
+  animation: fadeIn 0.5s ease;
+}
+
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+// ── Panneau gauche ────────────────────────────────────────────────────────────
+.login-left {
+  flex: 0 0 42%;
+  background: $dark;
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  @media (max-width: 768px) { display: none; }
+}
+
+.left-overlay {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse at 30% 50%, rgba($gold, 0.12) 0%, transparent 60%),
+    radial-gradient(ellipse at 80% 20%, rgba($gold-dark, 0.08) 0%, transparent 50%);
+}
+
+.left-content {
+  position: relative;
+  z-index: 1;
+  padding: 48px;
+  display: flex;
+  flex-direction: column;
+  gap: 48px;
+}
+
+.brand-mark {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.brand-v {
+  width: 56px; height: 56px;
+  background: linear-gradient(135deg, $gold, $gold-light);
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 1.8rem;
+  font-weight: 700;
+  color: #fff;
+  box-shadow: 0 4px 20px rgba($gold, 0.35);
+}
+
+.brand-text {
+  display: flex;
+  flex-direction: column;
+  .brand-name {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 1.4rem;
+    font-weight: 700;
+    color: #fff;
+    letter-spacing: 0.15em;
+  }
+  .brand-sub {
+    font-size: 0.65rem;
+    font-weight: 300;
+    color: $gold-light;
+    letter-spacing: 0.35em;
+    text-transform: uppercase;
+  }
+}
+
+.left-quote {
+  p {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 1.6rem;
+    font-weight: 400;
+    color: rgba(#fff, 0.85);
+    line-height: 1.6;
+    font-style: italic;
+  }
+  .quote-line {
+    display: block;
+    width: 48px;
+    height: 2px;
+    background: $gold;
+    margin-top: 20px;
+  }
+}
+
+.left-decoration {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  width: 300px;
+  height: 300px;
+}
+
+.deco-circle {
+  position: absolute;
+  border-radius: 50%;
+  border: 1px solid rgba($gold, 0.12);
+  &.c1 { width: 280px; height: 280px; bottom: -100px; right: -100px; }
+  &.c2 { width: 180px; height: 180px; bottom: -40px; right: -40px; border-color: rgba($gold, 0.2); }
+  &.c3 { width: 90px;  height: 90px;  bottom: 20px;  right: 20px;  border-color: rgba($gold, 0.35); }
+}
+
+// ── Panneau droit (formulaire) ─────────────────────────────────────────────
+.login-right {
+  flex: 1;
+  background: $surface;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 24px;
+}
+
+.login-card {
+  width: 100%;
+  max-width: 420px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  animation: slideUp 0.5s 0.1s ease both;
+}
+
+@keyframes slideUp {
+  from { transform: translateY(20px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+.card-top {
+  h1 {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 2.4rem;
+    font-weight: 700;
+    color: $text;
+    line-height: 1.1;
+  }
+  p {
+    margin-top: 8px;
+    font-size: 0.88rem;
+    color: $text-muted;
+    line-height: 1.5;
+  }
+}
+
+.alert-error {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px;
+  background: #FDEDEC;
+  border: 1px solid rgba($red, 0.3);
+  border-radius: 10px;
+  color: $red;
+  font-size: 0.85rem;
+  font-weight: 500;
+  .material-icons { font-size: 1.1rem; }
+}
+
+.form-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.field-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+
+  label {
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: $text-muted;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+}
+
+.input-box {
+  display: flex;
+  align-items: center;
+  background: #fff;
+  border: 1.5px solid #E8E4D9;
+  border-radius: 10px;
+  padding: 0 14px;
+  transition: border-color 0.2s, box-shadow 0.2s;
+
+  &:focus-within {
+    border-color: $gold;
+    box-shadow: 0 0 0 3px rgba($gold, 0.1);
+  }
+
+  .input-icon {
+    color: $text-muted;
+    font-size: 1.1rem;
+    margin-right: 10px;
+    flex-shrink: 0;
+  }
+
+  input {
+    flex: 1;
+    border: none;
+    outline: none;
+    background: transparent;
+    padding: 13px 0;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.92rem;
+    color: $text;
+
+    &::placeholder { color: #C0BAB0; }
+  }
+}
+
+.toggle-pw {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: $text-muted;
+  display: flex;
+  padding: 0;
+  margin-left: 6px;
+  .material-icons { font-size: 1.1rem; }
+  &:hover { color: $gold; }
+}
+
+.btn-login {
+  width: 100%;
+  padding: 15px 24px;
+  background: linear-gradient(135deg, $gold-dark, $gold);
+  color: #fff;
+  border: none;
+  border-radius: 12px;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  letter-spacing: 0.02em;
+  transition: all 0.2s;
+  box-shadow: 0 4px 16px rgba($gold, 0.3);
+
+  &:hover:not(:disabled) {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 24px rgba($gold, 0.4);
+  }
+  &:active:not(:disabled) { transform: translateY(0); }
+  &:disabled { opacity: 0.7; cursor: not-allowed; }
+
+  .material-icons { font-size: 1.1rem; }
+}
+
+.login-footer {
+  text-align: center;
+  font-size: 0.75rem;
+  color: #C0BAB0;
+  line-height: 1.5;
+}
+
+// ── Utilitaires ───────────────────────────────────────────────────────────────
+.spin {
+  animation: spin 1s linear infinite;
+}
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes fadeUp {
+  from { transform: translateY(16px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}

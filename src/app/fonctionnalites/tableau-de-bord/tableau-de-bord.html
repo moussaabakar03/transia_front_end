@@ -1,0 +1,59 @@
+<div class="dashboard-wrapper">
+  
+  <!-- Navigation Gauche -->
+  <app-sidebar></app-sidebar>
+
+  <!-- Contenu Principal -->
+  <div class="main-content">
+    <app-header (actionCreer)="ouvrirSelection()"></app-header>
+    
+    <div class="content-body">
+      
+      <!-- En-tête -->
+      <div class="dashboard-action-bar">
+        <div class="welcome-text">
+          <div class="page-eyebrow">TransIa · Plateforme de Pilotage</div>
+          <h1>Tableau de bord général</h1>
+          <p>Supervisez vos flux de transport en temps réel.</p>
+        </div>
+        <button type="button" class="btn-create-form" (click)="ouvrirPopUp()">
+          <span class="material-icons">add</span>
+          CRÉER UN FORMULAIRE
+        </button>
+      </div>
+
+      <!-- État de chargement -->
+      @if (isLoadingTransport) {
+        <div class="flex flex-col items-center justify-center py-20 text-slate-400 gap-3 bg-white border border-slate-100 rounded-3xl shadow-sm">
+          <span class="material-icons animate-spin text-4xl text-blue-500">sync</span>
+          <p class="text-sm font-bold uppercase tracking-wider">Agrégation des données de flux...</p>
+        </div>
+      } @else {
+        
+        <!-- CARTES DES KPIs TRANSPORT -->
+        <app-stats-cards [kpi]="kpiData"></app-stats-cards>
+
+        <!-- TABLEAUX : PROCHAINS DÉPARTS + DERNIÈRES RÉSERVATIONS -->
+        <div class="mt-6">
+          <app-reservations-recentes 
+            [triggerRefresh]="refreshSignal" 
+            [reservations]="reservations"
+            [trajets]="trajets"
+            [prochainsDeparts]="prochainsDeparts"
+            [placesDisponibles]="placesDisponiblesParTrajet"
+            (clonerApercu)="ouvrirApercu($event)">
+          </app-reservations-recentes>
+        </div>
+
+      }
+    </div>
+  </div>
+</div>
+
+<!-- Modale d'aperçu -->
+@if (projetSelectionne) {
+  <app-modale-apercu 
+    [projet]="projetSelectionne" 
+    (fermerModale)="fermerApercu()">
+  </app-modale-apercu>
+}

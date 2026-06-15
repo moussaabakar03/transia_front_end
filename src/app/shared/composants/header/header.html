@@ -1,0 +1,44 @@
+<div class="header-container">
+  <div class="header-actions">
+    <div class="user-profile-wrapper">
+      <div class="user-profile-info" (click)="toggleDropdown()">
+        <span class="welcome-user">Welcome, <strong>{{ user.nom }}- {{ user.username }}</strong></span>
+        
+        <!-- <img *ngIf="userAvatar; else defaultAvatar" [src]="userAvatar" alt="Avatar" class="user-avatar-img"> -->
+        
+        <img *ngIf="userAvatar" [src]="userAvatar" alt="Avatar" class="user-avatar-img">
+        <span *ngIf="!userAvatar" class="material-icons avatar-icon">account_circle</span>
+
+        <ng-template #defaultAvatar>
+          <span class="material-icons avatar-icon">account_circle</span>
+        </ng-template>
+        
+        <span class="material-icons arrow-icon">expand_more</span>
+      </div>
+
+      <div class="profile-dropdown" *ngIf="showDropdown">
+        <div class="dropdown-header">
+          <p class="role-badge">{{ userRole }}</p>
+        </div>
+        <hr class="dropdown-divider">
+        <!-- <button class="dropdown-item" (click)="goToProfile()"> -->
+        <button class="dropdown-item" (click)="ouvrirViewProfile()">
+          <span class="material-icons">person</span>
+          Profil
+        </button>
+        <button class="dropdown-item logout-btn" (click)="logout()">
+          <span class="material-icons">logout</span>
+          Se déconnecter
+        </button>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<app-modal-view-profile *ngIf="afficherViewProfile"
+  [profil]="profilVoir"
+  (fermer)="fermerViewProfile()"
+  [titre]="titreViewProfil"
+  >
+</app-modal-view-profile>

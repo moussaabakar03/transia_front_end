@@ -1,0 +1,83 @@
+<div class="sidebar-overlay" [class.visible]="isOpen" (click)="close()"></div>
+
+<div class="sidebar" [class.open]="isOpen">
+
+  <!-- ═══════════ MARQUE / LOGO ═══════════ -->
+  <div class="brand-container">
+    <img src="images/logo-symbole.jpeg" alt="Logo TransIa" class="logo-icon">
+    <div class="brand-text">
+      <div class="brand-name">
+        <span class="big-letter">T</span><span>R</span><span>A</span><span>N</span>
+        <span class="big-letter">S</span><span>I</span><span>A</span>
+      </div>
+      <div class="sub-title">Pilotage & Flux</div>
+    </div>
+    <button class="btn-sidebar-close" (click)="close()" aria-label="Fermer le menu">
+      <i class="material-icons">close</i>
+    </button>
+  </div>
+
+  <!-- ═══════════ MENU PRINCIPAL ═══════════ -->
+  <nav class="menu-section">
+
+    <!-- Liens Dashboard & Formulaires (Dashboard 2) -->
+    <a routerLink="/tableau-de-bord" routerLinkActive="active" class="menu-link" (click)="close()">
+      <i class="material-icons">home</i>
+      <span>TABLEAU DE BORD</span>
+    </a>
+    <a routerLink="/formulaires" routerLinkActive="active" class="menu-link" (click)="close()">
+      <i class="material-icons">description</i>
+      <span>FORMULAIRES DÉPLOYÉS</span>
+    </a>
+    <a routerLink="/gestion-comptes" *ngIf="getRole()" routerLinkActive="active" class="menu-link" (click)="close()">
+      <i class="material-icons">people</i>
+      <span>GESTION DES COMPTES</span>
+    </a>
+
+    <!-- Séparateur -->
+    <div class="menu-separator"></div>
+
+    <!-- ═══════════ RUBRIQUES TRANSPORT (Dashboard 1) ═══════════ -->
+    <a routerLink="/vehicules/liste" routerLinkActive="active" class="menu-link" (click)="close()">
+      <i class="material-icons">directions_car</i>
+      <span>VÉHICULE</span>
+    </a>
+    <a routerLink="/trajets/liste" routerLinkActive="active" class="menu-link" (click)="close()">
+      <i class="material-icons">alt_route</i>
+      <span>TRAJET</span>
+    </a>
+    
+    <a routerLink="/villes" routerLinkActive="active" class="menu-link" (click)="close()">
+      <i class="material-icons">location_city</i>
+      <span>VILLE</span>
+    </a>
+    <a routerLink="/reservations/liste" routerLinkActive="active" class="menu-link" (click)="close()">
+      <i class="material-icons">event_seat</i>
+      <span>RÉSERVATION</span>
+    </a>
+
+    <!-- ═══════════ UTILISATEURS & FEEDBACKS ═══════════ -->
+    <a routerLink="/utilisateurs" routerLinkActive="active" class="menu-link" (click)="close()">
+      <i class="material-icons">group</i>
+      <span>UTILISATEURS</span>
+    </a>
+    <a routerLink="/feedbacks/liste" routerLinkActive="active" class="menu-link" (click)="close()">
+      <i class="material-icons">feedback</i>
+      <span>FEEDBACKS</span>
+    </a>
+
+    <!-- Séparateur -->
+    <div class="menu-separator"></div>
+
+    <!-- ═══════════ AUTH / DÉCONNEXION ═══════════ -->
+    <a (click)="logout(); close()" class="menu-link logout-link">
+      <i class="material-icons">logout</i>
+      <span>DÉCONNEXION</span>
+    </a>
+
+  </nav>
+</div>
+
+<button class="btn-hamburger" (click)="toggle()" aria-label="Ouvrir le menu">
+  <i class="material-icons">{{ isOpen ? 'close' : 'menu' }}</i>
+</button>

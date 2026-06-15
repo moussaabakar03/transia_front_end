@@ -1,0 +1,195 @@
+<div class="dashboard-layout">
+  <app-sidebar></app-sidebar>
+
+  <div class="main-content-area">
+    <app-header></app-header>
+
+    <div class="page-body">
+
+      <!-- En-tête page -->
+      <div class="dashboard-action-bar">
+        <div class="welcome-text">
+          <div class="breadcrumb">
+            <button class="btn-back" (click)="retour()">
+              <span class="material-icons">arrow_back</span>
+            </button>
+            <div>
+              <h1>Réponses collectées</h1>
+              <p>{{ titreFormulaire }} — {{ totalSoumissions }} soumission(s)</p>
+            </div>
+          </div>
+        </div>
+        <button class="btn-export" (click)="exporterExcel()">
+          <span class="material-icons">file_download</span> 
+          Exporter en Excel
+        </button>
+      </div>
+
+      <!-- Barre de recherche -->
+      @if (!isLoading && !erreur) {
+        <div class="search-bar">
+          <span class="material-icons">search</span>
+          <input type="text"
+                 [(ngModel)]="recherche"
+                 (ngModelChange)="onRecherche()"
+                 placeholder="Rechercher par enquêteur..." />
+        </div>
+      }
+
+      <!-- Chargement -->
+      @if (isLoading) {
+        <div class="loading-state">
+          <span class="material-icons spin">autorenew</span>
+          <p>Chargement des soumissions...</p>
+        </div>
+      }
+
+      <!-- Erreur -->
+      @if (erreur && !isLoading) {
+        <div class="error-state">
+          <span class="material-icons">error_outline</span>
+          <p>{{ erreur }}</p>
+          <button class="btn-retry" (click)="chargerDonnees()">Réessayer</button>
+        </div>
+      }
+
+      <!-- Tableau soumissions -->
+      @if (!isLoading && !erreur) {
+        <div class="table-container-deploye">
+          <table class="custom-deploye-table">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>ENQUÊTEUR</th>
+                <th>DATE D'ENVOI</th>
+                <th>GPS</th>
+                <th>RÉPONSES</th>
+                <th class="text-center">ACTIONS</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (s of soumissionsAffichees; track s.id; let i = $index) {
+                <tr class="soumission-row" [class.expanded]="s.expanded">
+                  <td class="num-cell">
+                    {{ (pageActuelle - 1) * 10 + i + 1 }}
+                  </td>
+                  <td>
+                    <div class="enqueteur-cell">
+                      <span class="material-icons">
+                        {{ s.submitted_by_username ? 'account_circle' : 'person_outline' }}
+                      </span>
+                      <span>{{ s.submitted_by_username || 'Anonyme' }}</span>
+                    </div>
+                  </td>
+                  <td>{{ formaterDate(s.submitted_at) }}</td>
+                  <td>
+                    @if (s.gps_latitude && s.gps_longitude) {
+                      <button class="btn-gps" (click)="ouvrirCarte(s.gps_latitude!, s.gps_longitude!)"
+                              title="Voir sur la carte">
+                        <span class="material-icons">gps_fixed</span>
+                        Voir
+                      </button>
+                    } @else {
+                      <span class="no-gps">—</span>
+                    }
+                  </td>
+                  <td>
+                    <span class="reponses-count">
+                      {{ s.answers.length || 0 }} réponse(s)
+                    </span>
+                  </td>
+                  <td class="text-center">
+                    <div class="table-actions-group">
+                      <button class="btn-table-action view"
+                              (click)="toggleDetail(s)"
+                              title="Voir le détail">
+                        <span class="material-icons">
+                          {{ s.expanded ? 'expand_less' : 'expand_more' }}
+                        </span>
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+
+                <!-- Ligne de détail dépliable -->
+                @if (s.expanded) {
+                  <tr class="detail-row">
+                    <td colspan="6">
+                      <div class="detail-panel">
+                        <div class="detail-header">
+                          <span class="material-icons">quiz</span>
+                          Détail des réponses
+                          @if (s.gps_latitude) {
+                            <span class="gps-info">
+                              <span class="material-icons">location_on</span>
+                              {{ s.gps_latitude.toFixed(4) }}, {{ s.gps_longitude?.toFixed(4) }}
+                              (±{{ s.gps_accuracy?.toFixed(0) }}m)
+                            </span>
+                          }
+                        </div>
+                        <div class="reponses-grid">
+                          @for (r of s.reponsesFormatees; track r.field_id) {
+                            <div class="reponse-item">
+                              <div class="reponse-label">{{ r.field_label }}</div>
+                              <div class="reponse-value">
+                                @if (r.field_type === 'photo' || r.field_type === 'signature' || r.field_type === 'file') {
+                                  <button class="btn-voir-media"
+                                          type="button"
+                                          (click)="ouvrirFichier(r.value)">
+                                    <span class="material-icons">open_in_new</span>
+                                    Voir le fichier
+                                  </button>
+                                } @else {
+                                  {{ r.value || '—' }}
+                                }
+                              </div>
+                            </div>
+                          } @empty {
+                            <p class="no-reponses">Aucune réponse enregistrée.</p>
+                          }
+                        </div>
+                      </div>
+                    </td>
+                  </tr>
+                }
+
+              } @empty {
+                <tr>
+                  <td colspan="6" class="empty-table-state">
+                    <span class="material-icons">inbox</span>
+                    <p>Aucune soumission pour ce formulaire.</p>
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Pagination -->
+        @if (totalPages > 1) {
+          <div class="pagination-container">
+            <span class="pagination-info">
+              {{ soumissionsAffichees.length }} sur {{ totalSoumissions }} soumission(s)
+            </span>
+            <div class="pagination-buttons">
+              <button class="btn-pag" [disabled]="pageActuelle === 1" (click)="pagePrecedente()">
+                <span class="material-icons">chevron_left</span>
+              </button>
+              @for (p of [].constructor(totalPages); track $index) {
+                <button class="btn-pag"
+                        [class.active]="pageActuelle === $index + 1"
+                        (click)="changerPage($index + 1)">
+                  {{ $index + 1 }}
+                </button>
+              }
+              <button class="btn-pag" [disabled]="pageActuelle === totalPages" (click)="pageSuivante()">
+                <span class="material-icons">chevron_right</span>
+              </button>
+            </div>
+          </div>
+        }
+      }
+
+    </div>
+  </div>
+</div>

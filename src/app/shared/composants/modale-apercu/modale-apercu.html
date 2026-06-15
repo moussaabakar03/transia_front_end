@@ -1,0 +1,51 @@
+<div class="modal-overlay" (click)="fermer()">
+  <div class="modal-card" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <div class="title-area">
+        <span class="material-icons folder-icon">folder_open</span>
+        <h2>Détails du Projet</h2>
+      </div>
+      <button class="btn-close" (click)="fermer()">
+        <span class="material-icons">close</span>
+      </button>
+    </div>
+
+    @if (projet) {
+      <div class="modal-body">
+        <div class="info-row">
+          <span class="label">NOM DU FORMULAIRE :</span>
+          <span class="value project-title">{{ projet.nom }}</span>
+        </div>
+
+        <div class="info-grid">
+          <div class="info-box">
+            <span class="label">DATE DE CRÉATION</span>
+            <span class="value"><span class="material-icons icon-small">calendar_today</span> {{ projet.date }}</span>
+          </div>
+          <div class="info-box">
+            <span class="label">STATUT ACTUEL</span>
+            <span class="value">
+              <span class="badge" [ngClass]="projet.statut === 'Actif' ? 'status-active' : 'status-pending'">
+                {{ projet.statut }}
+              </span>
+            </span>
+          </div>
+        </div>
+
+        <div class="data-counter-card">
+          <div class="counter-icon">
+            <span class="material-icons">analytics</span>
+          </div>
+          <div class="counter-details">
+            <span class="counter-number">{{ projet.soumissions | number }}</span>
+            <span class="counter-label">Données / Soumissions collectées</span>
+          </div>
+        </div>
+      </div>
+    }
+
+    <div class="modal-footer">
+      <button class="btn-primary" (click)="fermer()">FERMER L'APERÇU</button>
+    </div>
+  </div>
+</div>

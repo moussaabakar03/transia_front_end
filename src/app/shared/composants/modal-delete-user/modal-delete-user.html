@@ -1,0 +1,24 @@
+<div class="modal-overlay" (click)="cancel()">
+  <div class="modal-card modal-delete" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <span class="material-icons warning-icon">warning</span>
+      <h2>Supprimer l'utilisateur</h2>
+    </div>
+
+    <div class="modal-body">
+      <p class="delete-message">
+        Êtes-vous sûr de vouloir supprimer <strong>{{ userName }}</strong> ?
+      </p>
+      <p class="delete-warning">
+        Cette action est <strong>irréversible</strong> et supprimera tous les données associées.
+      </p>
+    </div>
+
+    <div class="modal-footer">
+      <button class="btn-cancel" [disabled]="isLoading" (click)="cancel()">ANNULER</button>
+      <button class="btn-delete" [disabled]="isLoading" (click)="confirmDelete()">
+        {{ isLoading ? 'SUPPRESSION...' : 'SUPPRIMER' }}
+      </button>
+    </div>
+  </div>
+</div>

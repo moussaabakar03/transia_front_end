@@ -1,0 +1,156 @@
+<div class="dashboard-layout">
+  <app-sidebar></app-sidebar>
+
+  <div class="main-content-area" [style.position]="'relative'">
+    <app-header (actionCreer)="ouvrirSelectionGlobale()"></app-header>
+    
+    <div class="page-body">
+      <div class="dashboard-action-bar">
+        <div class="welcome-text">
+          <h1>Gestion des Comptes</h1>
+          <p>Administrez les autorisations d'accès des collaborateurs et affectez les rôles sur le terrain.</p>
+        </div>
+        
+        <button class="btn-gold-action-local" (click)="ouvrirModaleCompte()">
+          <span class="material-icons">person_add</span>
+          NOUVEL UTILISATEUR
+        </button>
+      </div>
+
+      <div class="search-bar">
+        <span class="material-icons">search</span>
+        <input
+          type="text"
+          placeholder="Rechercher par nom, email ou adresse..."
+          [(ngModel)]="valeurSaisi"
+          (input)="filtrerProfils()"
+        />
+      </div>
+
+      <div class="table-container-comptes">
+        <table class="custom-comptes-table">
+          <thead>
+            <tr>
+              <th>UTILISATEUR</th>
+              <th>ADRESSE EMAIL</th>
+              <th>RÔLE SYSTÈME</th>
+              <th>STATUT DE CONFLICT</th>
+              <th class="text-center">ACTIONS</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (profil of comptesAffiches; track profil.id) {
+              <tr>
+                <td>
+                  <div class="user-profile-cell">
+                    <!-- <span class="material-icons avatar-icon">account_circle</span> -->
+                     <!-- image ou circle avec initiales -->
+                    <img *ngIf="profil.photo_profil; else defaultAvatar" [src]="profil.photo_profil" alt="Avatar" class="user-avatar-img" style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover; margin-right: 10px;">
+                    <ng-template #defaultAvatar>
+                      <span class="material-icons avatar-icon">account_circle</span>
+                    </ng-template>
+                    <div class="user-info-text">
+                      <span class="user-fullname">{{ profil.user.username }} {{ profil.user.first_name }}</span>
+                      <span class="user-id">ID: #00{{ profil.user.id }}</span>
+                    </div>
+                  </div>
+                </td>
+                <td><span class="email-text">{{ profil.user.email }}</span></td>
+                <td>
+                  <span class="role-badge" [ngClass]="profil.user.role.toLowerCase() === 'administrateur' ? 'admin' : 'enqueteur'">
+                    {{ profil.user.role }}
+                  </span>
+                </td>
+                <td>
+                  <span class="status-user-badge" [ngClass]="profil.user.is_active ? 'active' : 'inactive'">
+                    {{ profil.user.is_active ? 'Actif' : 'Inactif' }}
+                  </span>
+                </td>
+
+                  
+                <td class="text-center actions-cell flex">
+                  <div class="table-actions-group actions-comptes flex">
+                    <!-- Bouton suspend/activate -->
+                    @if (profil.user.is_active) {
+                      <button class="btn-table-action delete" (click)="suspendreCompte(profil.user.id)" title="Suspendre ou révoquer les accès">
+                        <span class="material-icons">person_remove</span>
+                      </button>
+                    } @else {
+                      <button class="btn-table-action activate" (click)="activerCompte(profil.user.id)" title="Réactiver le compte">
+                        <span class="material-icons">person_add</span>
+                      </button>
+                    }
+                  </div>
+                  <div class="table-actions-group actions-comptes flex">
+                    <button class="btn-table-action edit" (click)="ouvrirEditCompte(profil)" title="Modifier les informations du compte">
+                      <span class="material-icons">edit</span>
+                    </button>
+                  </div>
+                  <div class="table-actions-group actions-comptes flex">
+                    <button class="btn-table-action view" (click)="ouvrirViewProfile(profil)" title="Afficher le profil détaillé">
+                      <span class="material-icons">visibility</span>
+                    </button>
+                  </div>
+                  <div class="table-actions-group actions-comptes flex">
+                    <button class="btn-table-action delete" (click)="ouvrirDeleteCompte(profil.user.id, profil.user.username)" title="Supprimer le compte">
+                      <span class="material-icons">delete</span>
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+
+
+      <div class="pagination-container">
+        <span class="pagination-info">
+          Affichage de {{ comptesAffiches.length }} sur {{ totalComptes }} compte(s)
+        </span>
+        <div class="pagination-buttons">
+          <button class="btn-pag" [disabled]="pageActuelle === 1" (click)="pagePrecedente()">
+            <span class="material-icons">chevron_left</span>
+          </button>
+          @for (p of [].constructor(totalPages); track $index) {
+            <button 
+              class="btn-pag" 
+              [class.active]="pageActuelle === $index + 1"
+              (click)="changerPage($index + 1)">
+              {{ $index + 1 }}
+            </button>
+          }
+          <button class="btn-pag" [disabled]="pageActuelle === totalPages" (click)="pageSuivante()">
+            <span class="material-icons">chevron_right</span>
+          </button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<app-modal-enregistrement-user *ngIf="afficherCreationCompte"
+  (fermer)="fermerCreationCompte()"
+  (success)="fermerCreationCompte()">
+</app-modal-enregistrement-user>
+
+<app-modal-edit-user *ngIf="afficherEditCompte" 
+  [profil]="profilEditer"
+  (fermer)="fermerEditCompte()"
+  (success)="onEditSuccess()">
+</app-modal-edit-user>
+
+<app-modal-delete-user *ngIf="afficherDeleteCompte"
+  [userId]="userIdDelete"
+  [userName]="userNameDelete"
+  (fermer)="fermerDeleteCompte()"
+  (success)="onDeleteSuccess()">
+</app-modal-delete-user>
+
+<app-modal-view-profile *ngIf="afficherViewProfile"
+  [profil]="profilVoir"
+  (fermer)="fermerViewProfile()"
+  [titre]="titreViewProfil"
+  >
+</app-modal-view-profile>

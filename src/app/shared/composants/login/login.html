@@ -1,0 +1,134 @@
+<!-- ══ SPLASH SCREEN ══════════════════════════════════════════════════════ -->
+@if (splashVisible) {
+  <div class="splash-screen" [class.fading]="splashFading">
+    <div class="splash-content">
+      <div class="splash-logo-ring">
+        <div class="splash-ring ring-1"></div>
+        <div class="splash-ring ring-2"></div>
+        <div class="splash-ring ring-3"></div>
+        <div class="splash-logo-inner">
+          <span class="splash-logo-letter">V</span>
+        </div>
+      </div>
+      <div class="splash-brand">
+        <div class="splash-name">
+          <span class="big-letter">T</span>
+          <span>A</span>
+          <span>N</span>
+          <span>S</span>
+          <span class="big-letter">I</span>
+          <span>A</span>
+        </div>
+      </div>
+      <div class="splash-loader">
+        <div class="splash-loader-bar"></div>
+      </div>
+    </div>
+  </div>
+}
+
+<!-- ══ PAGE DE CONNEXION ══════════════════════════════════════════════════ -->
+@if (!splashVisible) {
+  <div class="login-page">
+
+    <!-- Panneau gauche décoratif -->
+    <div class="login-left">
+      <div class="left-overlay"></div>
+      <div class="left-content">
+        <div class="brand-mark">
+          <div class="brand-v">V</div>
+          <div class="brand-text">
+            <div class="brand-name">
+              <span class="big-letter">T</span>
+              <span>A</span>
+              <span>N</span>
+              <span>S</span>
+              <span class="big-letter">I</span>
+              <span>A</span>
+            </div>
+          </div>
+        </div>
+        <div class="left-quote">
+          <p>"Plateforme intelligente de gestion du transport."</p>
+          <span class="quote-line"></span>
+        </div>
+        <div class="left-decoration">
+          <div class="deco-circle c1"></div>
+          <div class="deco-circle c2"></div>
+          <div class="deco-circle c3"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Panneau droit : formulaire -->
+    <div class="login-right">
+      <div class="login-card">
+
+        <div class="card-top">
+          <h1>Salut !</h1>
+          <p>Accédez à votre espace de gestion.</p>
+        </div>
+
+        @if (erreur) {
+          <div class="alert-error">
+            <span class="material-icons">error_outline</span>
+            {{ erreur }}
+          </div>
+        }
+
+        <div class="form-fields">
+
+          <div class="field-wrap">
+            <label>Identifiant</label>
+            <div class="input-box">
+              <span class="material-icons input-icon">person_outline</span>
+              <input type="text"
+                     [(ngModel)]="username"
+                     name="username"
+                     placeholder="Votre nom d'utilisateur"
+                     (keyup.enter)="seConnecter()"
+                     autocomplete="username" />
+            </div>
+          </div>
+
+          <div class="field-wrap">
+            <label>Mot de passe</label>
+            <div class="input-box">
+              <span class="material-icons input-icon">lock_outline</span>
+              <input [type]="passwordVisible ? 'text' : 'password'"
+                     [(ngModel)]="password"
+                     name="password"
+                     placeholder="Votre mot de passe"
+                     (keyup.enter)="seConnecter()"
+                     autocomplete="current-password" />
+              <button class="toggle-pw" type="button" (click)="togglePassword()">
+                <span class="material-icons">{{ passwordVisible ? 'visibility_off' : 'visibility' }}</span>
+              </button>
+            </div>
+          </div>
+
+        </div>
+
+        <button class="btn-login"
+                (click)="seConnecter()"
+                [disabled]="isLoading">
+          @if (isLoading) {
+            <span class="material-icons spin">autorenew</span>
+            Connexion en cours...
+          } @else {
+            <span>Se connecter</span>
+            <span class="material-icons">arrow_forward</span>
+          }
+        </button>
+
+         <p class="login-footer">
+          &copy; {{ currentYear }} <strong>TransIa</strong> · Gestion intelligente du transport<br>
+          <small>Tous droits réservés</small>
+        </p>
+
+        
+      </div>
+    </div>
+
+  </div>
+}

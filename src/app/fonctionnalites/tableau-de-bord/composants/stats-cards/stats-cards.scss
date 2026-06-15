@@ -1,0 +1,89 @@
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 24px;
+  margin-top: 20px;
+
+  @media (max-width: 1023px) {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  @media (max-width: 767px) {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+}
+
+.stat-card {
+  background-color: #ffffff; // Fond blanc pur (--white)
+  border: 1px solid #f1f5f9;  // Bordure légère (--slate-100)
+  border-radius: 24px;
+  padding: 24px;
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  box-shadow: 0 4px 12px rgba(30, 41, 59, 0.03); // Ombre très douce ardoise
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(30, 41, 59, 0.06);
+  }
+
+  // Conteneur de l'icône à gauche
+  .stat-icon-wrapper {
+    width: 56px;
+    height: 56px;
+    border-radius: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    
+    .material-icons {
+      font-size: 28px;
+    }
+  }
+
+  .stat-info {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .stat-label {
+    color: #94a3b8; // Couleur Slate discrète (--slate-400)
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 0.8px;
+    text-transform: uppercase;
+  }
+
+  .stat-value {
+    color: #1e293b; // Ardoise foncée principale (--slate-800)
+    font-size: 28px;
+    font-weight: 900;
+    line-height: 1.2;
+  }
+
+  // Variations de couleurs par carte
+  &.card-departs {
+    .stat-icon-wrapper {
+      background-color: #dbeafe; // Fond bleu clair (--blue-100)
+      color: #3b82f6;            // Icône bleue (--blue-500)
+    }
+    .stat-value { color: #1d4ed8; } // Valeur en bleu soutenu (--blue-600)
+  }
+
+  &.card-attente {
+    .stat-icon-wrapper {
+      background-color: #fef3c7; // Fond ambre clair
+      color: #f59e0b;            // Icône ambre (--amber)
+    }
+  }
+
+  &.card-revenus {
+    .stat-icon-wrapper {
+      background-color: #ffe4e6; // Fond rose clair
+      color: #f43f5e;            // Icône rose (--rose)
+    }
+  }
+}

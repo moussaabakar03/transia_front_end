@@ -1,0 +1,31 @@
+.app-layout {
+  display: flex;
+  width: 100%;
+  min-height: 100vh;
+  background-color: #f8f9fa; // Un gris très clair pour faire ressortir le blanc et l'or
+}
+
+.main-content {
+  flex-grow: 1;
+  margin-left: 260px; // La largeur exacte de ta sidebar
+  display: flex;
+  flex-direction: column;
+}
+
+
+
+// .app-layout {
+//   display: flex;
+//   min-height: 100vh;
+//   .content {
+//     flex: 1;
+//     margin-left: 280px;
+//     transition: margin-left 0.3s ease;
+//     &.sidebar-ferme {
+//       margin-left: 80px;
+//     }
+//     @media (max-width: 768px) {
+//       margin-left: 0 !important;
+//     }
+//   }
+// }
