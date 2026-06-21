@@ -2,10 +2,10 @@ import { Vehicule } from './vehicule';
 import { Ville } from './ville';
 
 export enum StatutTrajet {
-  PROGRAMME,
-  EN_COURS,
-  TERMINE,
-  ANNULE
+  PROGRAMME = 'PROGRAMME',
+  EN_COURS = 'EN_COURS',
+  TERMINE = 'TERMINE',
+  ANNULE = 'ANNULE'
 }
 
 export interface Trajet {

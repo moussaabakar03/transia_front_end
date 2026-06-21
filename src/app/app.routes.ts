@@ -6,6 +6,8 @@ import { GestionComptes } from './fonctionnalites/gestion-comptes/gestion-compte
 import { AnalyseDonnees } from './fonctionnalites/analyse-donnees/analyse-donnees';
 import { authGuard } from './core/guards/auth.guard';
 import { Villes } from './fonctionnalites/transport/villes/villes';
+import { Vehicules } from './fonctionnalites/transport/vehicules/vehicules';
+import { Trajets } from './fonctionnalites/transport/trajets/trajets';
 
 export const routes: Routes = [
   { path: '', redirectTo: 'login', pathMatch: 'full' },
@@ -17,8 +19,10 @@ export const routes: Routes = [
   { path: 'gestion-comptes',       component: GestionComptes,      canActivate: [authGuard] },
   { path: 'analyse-donnees/:id',   component: AnalyseDonnees,      canActivate: [authGuard] },
 
-
-  { path: 'villes',   component: Villes,      canActivate: [authGuard] },
+  // Routes transport
+  { path: 'villes',                component: Villes,             canActivate: [authGuard] },
+  { path: 'vehicules',             component: Vehicules,          canActivate: [authGuard] },
+  { path: 'trajets',               component: Trajets,          canActivate: [authGuard] },
 
   { path: '**', redirectTo: 'login' }
 ];

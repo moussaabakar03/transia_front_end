@@ -1,11 +1,283 @@
-import { Component } from '@angular/core';
+import { Component, OnInit } from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
+import { Sidebar } from '../../../shared/composants/sidebar/sidebar';
+import { Header } from '../../../shared/composants/header/header';
+import { Vehicule, VehiculePayload, StatutVehicule } from '../../../shared/models/vehicule';
+import { VehiculeService } from '../../../core/services/transport/vehicule-service';
 
 @Component({
   selector: 'app-vehicules',
-  imports: [],
+  standalone: true,
+  imports: [CommonModule, Sidebar, Header, FormsModule],
   templateUrl: './vehicules.html',
   styleUrl: './vehicules.scss',
 })
-export class Vehicules {
+export class Vehicules implements OnInit {
+  // Affichage paginé
+  vehiculesAffiches: Vehicule[] = [];
 
+  // États des modales (ou formulaires d'action)
+  afficherCreationVehicule: boolean = false;
+  afficherEditVehicule: boolean = false;
+
+  // Données éditées / en cours
+  vehiculeEditer: Vehicule | null = null;
+  nouveauVehicule: VehiculePayload = { 
+    marque: '', 
+    modele: '', 
+    immatriculation: '', 
+    capacite: 0, 
+    statut: StatutVehicule.Disponible,
+    image: '' 
+  };
+
+  // Gestion des fichiers image
+  selectedFile: File | null = null;
+  imagePreview: string = '';
+
+  // Pagination
+  pageActuelle: number = 1;
+  readonly parPage: number = 5;
+  totalVehicules: number = 0;
+
+  // Recherche
+  valeurSaisi: string = '';
+
+  // Sources de données
+  tousLesVehicules: Vehicule[] = [];
+  resultatsFiltres: Vehicule[] = [];
+
+  // Enum pour le template
+  StatutVehicule = StatutVehicule;
+
+  constructor(private vehiculeService: VehiculeService) {}
+
+  ngOnInit(): void {
+    this.loadVehicules();
+  }
+
+  // Chargement initial depuis l'API
+  loadVehicules(): void {
+    this.vehiculeService.getAll().subscribe({
+      next: (data) => {
+        this.tousLesVehicules = data;
+        this.resultatsFiltres = [...data];
+        this.totalVehicules = this.resultatsFiltres.length;
+        this.pageActuelle = 1;
+        this.appliquerPage();
+      },
+      error: (err) => console.error('Erreur de chargement des véhicules', err)
+    });
+  }
+
+  // Filtrage en temps réel par marque, modèle ou immatriculation
+  filtrerVehicules(): void {
+    if (!this.valeurSaisi.trim()) {
+      this.resultatsFiltres = [...this.tousLesVehicules];
+    } else {
+      const terme = this.valeurSaisi.toLowerCase().trim();
+      this.resultatsFiltres = this.tousLesVehicules.filter(vehicule =>
+        vehicule.marque.toLowerCase().includes(terme) ||
+        vehicule.modele.toLowerCase().includes(terme) ||
+        vehicule.immatriculation.toLowerCase().includes(terme)
+      );
+    }
+    this.totalVehicules = this.resultatsFiltres.length;
+    this.pageActuelle = 1;
+    this.appliquerPage();
+  }
+
+  // Appliquer la pagination sur les résultats filtrés
+  private appliquerPage(): void {
+    const debut = (this.pageActuelle - 1) * this.parPage;
+    this.vehiculesAffiches = this.resultatsFiltres.slice(debut, debut + this.parPage);
+  }
+
+  // Calcul du nombre total de pages
+  get totalPages(): number {
+    return Math.ceil(this.totalVehicules / this.parPage);
+  }
+
+  // Navigation de pagination
+  pagePrecedente(): void {
+    if (this.pageActuelle > 1) {
+      this.pageActuelle--;
+      this.appliquerPage();
+    }
+  }
+
+  pageSuivante(): void {
+    if (this.pageActuelle < this.totalPages) {
+      this.pageActuelle++;
+      this.appliquerPage();
+    }
+  }
+
+  changerPage(p: number): void {
+    this.pageActuelle = p;
+    this.appliquerPage();
+  }
+
+  // Suppression d'un véhicule avec confirmation
+  supprimerVehicule(id: string | undefined, immatriculation: string): void {
+    if (!id) return;
+    
+    if (confirm(`Voulez-vous vraiment supprimer le véhicule ${immatriculation} ?`)) {
+      this.vehiculeService.delete(id).subscribe({
+        next: () => {
+          alert(`Le véhicule ${immatriculation} a été supprimé.`);
+          this.loadVehicules();
+        },
+        error: (err) => {
+          console.error('Erreur lors de la suppression', err);
+          alert('Impossible de supprimer ce véhicule.');
+        }
+      });
+    }
+  }
+
+  // Actions de création
+  ouvrirCreation(): void {
+    this.nouveauVehicule = { 
+      marque: '', 
+      modele: '', 
+      immatriculation: '', 
+      capacite: 0, 
+      statut: StatutVehicule.Disponible,
+      image: '' 
+    };
+    this.selectedFile = null;
+    this.imagePreview = '';
+    this.afficherCreationVehicule = true;
+  }
+
+  // Gestion du fichier image
+  onFileSelected(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    if (input.files && input.files[0]) {
+      this.selectedFile = input.files[0];
+      
+      // Créer un aperçu de l'image
+      const reader = new FileReader();
+      reader.onload = (e: ProgressEvent<FileReader>) => {
+        this.imagePreview = e.target?.result as string;
+      };
+      reader.readAsDataURL(this.selectedFile);
+    }
+  }
+
+  // Convertir le fichier en base64 pour l'envoi
+  private convertFileToBase64(file: File): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  }
+
+  soumettreCreation(): void {
+    if (!this.nouveauVehicule.marque || !this.nouveauVehicule.modele || 
+        !this.nouveauVehicule.immatriculation || this.nouveauVehicule.capacite <= 0) {
+      alert('Veuillez remplir tous les champs obligatoires.');
+      return;
+    }
+
+    // Si un fichier est sélectionné, le convertir en base64
+    if (this.selectedFile) {
+      this.convertFileToBase64(this.selectedFile).then(base64Image => {
+        this.nouveauVehicule.image = base64Image;
+        this.createVehicule();
+      }).catch(err => {
+        console.error('Erreur lors de la conversion de l\'image', err);
+        alert('Erreur lors du traitement de l\'image.');
+      });
+    } else {
+      this.createVehicule();
+    }
+  }
+
+  private createVehicule(): void {
+    this.vehiculeService.create(this.nouveauVehicule).subscribe({
+      next: () => {
+        this.afficherCreationVehicule = false;
+        this.loadVehicules();
+      },
+      error: (err) => console.error('Erreur lors de la création', err)
+    });
+  }
+
+  // Actions d'édition
+  ouvrirEdit(vehicule: Vehicule): void {
+    this.vehiculeEditer = { ...vehicule };
+    this.selectedFile = null;
+    this.imagePreview = vehicule.image || '';
+    this.afficherEditVehicule = true;
+  }
+
+  soumettreModification(): void {
+    if (!this.vehiculeEditer || !this.vehiculeEditer.id ||
+        !this.vehiculeEditer.marque || !this.vehiculeEditer.modele ||
+        !this.vehiculeEditer.immatriculation || this.vehiculeEditer.capacite <= 0) return;
+
+    // Si un fichier est sélectionné, le convertir en base64
+    if (this.selectedFile) {
+      this.convertFileToBase64(this.selectedFile).then(base64Image => {
+        if (this.vehiculeEditer) {
+          this.vehiculeEditer.image = base64Image;
+          this.updateVehicule();
+        }
+      }).catch(err => {
+        console.error('Erreur lors de la conversion de l\'image', err);
+        alert('Erreur lors du traitement de l\'image.');
+      });
+    } else {
+      this.updateVehicule();
+    }
+  }
+
+  private updateVehicule(): void {
+    if (!this.vehiculeEditer || !this.vehiculeEditer.id) return;
+
+    const payload: VehiculePayload = {
+      marque: this.vehiculeEditer.marque,
+      modele: this.vehiculeEditer.modele,
+      immatriculation: this.vehiculeEditer.immatriculation,
+      capacite: this.vehiculeEditer.capacite,
+      statut: this.vehiculeEditer.statut,
+      image: this.vehiculeEditer.image || ''
+    };
+
+    this.vehiculeService.update(this.vehiculeEditer.id, payload).subscribe({
+      next: () => {
+        this.afficherEditVehicule = false;
+        this.vehiculeEditer = null;
+        this.loadVehicules();
+      },
+      error: (err) => console.error('Erreur lors de la modification', err)
+    });
+  }
+
+  // Helper pour obtenir le libellé du statut
+  getStatutLibelle(statut: StatutVehicule): string {
+    switch (statut) {
+      case StatutVehicule.Disponible: return 'Disponible';
+      case StatutVehicule.En_Service: return 'En Service';
+      case StatutVehicule.En_maintenance: return 'En Maintenance';
+      case StatutVehicule.Indisponible: return 'Indisponible';
+      default: return 'Inconnu';
+    }
+  }
+
+  // Helper pour obtenir la classe CSS du statut
+  getStatutClass(statut: StatutVehicule): string {
+    switch (statut) {
+      case StatutVehicule.Disponible: return 'statut-disponible';
+      case StatutVehicule.En_Service: return 'statut-en-service';
+      case StatutVehicule.En_maintenance: return 'statut-maintenance';
+      case StatutVehicule.Indisponible: return 'statut-indisponible';
+      default: return '';
+    }
+  }
 }

@@ -1,15 +1,8 @@
-// public enum StatutVehicule {
-// 	Disponible,
-// 	En_Service,
-// 	En_maintenance,
-// 	Indisponible
-// }
-
 export enum StatutVehicule {
-  Disponible,
-  En_Service,
-  En_maintenance,
-  Indisponible
+  Disponible = 'Disponible',
+  En_Service = 'En_Service',
+  En_maintenance = 'En_maintenance',
+  Indisponible = 'Indisponible'
 }
 
 export interface Vehicule {

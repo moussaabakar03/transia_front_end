@@ -46,6 +46,11 @@ export class UserService {
     return this.http.delete<void>(`${this.baseUrl}/users/${publicId}`);
   }
 
+  getChauffeurs(): Observable<any[]> {4
+    return this.http.get<any[]>(`${this.baseUrl}/utilisateur/chauffeurs`);
+  }
+
+
   // --- Profils ---
   getProfilByUserId(userId: number): Observable<ProfilDTO> {
     return this.http.get<ProfilDTO>(`${this.baseUrl}/profil/${userId}`);

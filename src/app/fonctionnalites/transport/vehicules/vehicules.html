@@ -1,1 +1,217 @@
-<p>vehicules works!</p>
+<div class="dashboard-layout">
+  <app-sidebar></app-sidebar>
+
+  <div class="main-content-area">
+    <app-header (actionCreer)="ouvrirCreation()"></app-header>
+    
+    <div class="page-body">
+      <div class="dashboard-action-bar">
+        <div class="welcome-text">
+          <h1>Gestion des Véhicules</h1>
+          <p>Configurez et listez les véhicules de votre flotte de transport.</p>
+        </div>
+        
+        <button class="btn-blue-action-local" (click)="ouvrirCreation()">
+          <span class="material-icons">directions_car</span>
+          NOUVEAU VÉHICULE
+        </button>
+      </div>
+
+      <!-- Barre de Recherche -->
+      <div class="search-bar">
+        <span class="material-icons">search</span>
+        <input
+          type="text"
+          placeholder="Rechercher par marque, modèle ou immatriculation..."
+          [(ngModel)]="valeurSaisi"
+          (input)="filtrerVehicules()"
+        />
+      </div>
+
+      <!-- Tableau des Véhicules -->
+      <div class="table-container-vehicules">
+        <table class="custom-vehicules-table">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>MARQUE</th>
+              <th>MODÈLE</th>
+              <th>IMMATRICULATION</th>
+              <th>CAPACITÉ</th>
+              <th>STATUT</th>
+              <th class="text-center">ACTIONS</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (vehicule of vehiculesAffiches; track vehicule.id) {
+              <tr>
+                <td>
+                  <span class="vehicule-id-tag">#VH-{{ vehicule.id?.substring(0,5) || 'N/A' }}</span>
+                </td>
+                <td>
+                  <div class="vehicule-name-cell">
+                    <span class="material-icons car-icon">directions_car</span>
+                    <span class="vehicule-title">{{ vehicule.marque }}</span>
+                  </div>
+                </td>
+                <td>{{ vehicule.modele }}</td>
+                <td>
+                  <span class="immatriculation-badge">{{ vehicule.immatriculation }}</span>
+                </td>
+                <td>{{ vehicule.capacite }} places</td>
+                <td>
+                  <span class="statut-badge" [ngClass]="getStatutClass(vehicule.statut)">
+                    {{ getStatutLibelle(vehicule.statut) }}
+                  </span>
+                </td>
+                <td class="text-center actions-cell">
+                  <div class="actions-wrapper">
+                    <button class="btn-table-action edit" (click)="ouvrirEdit(vehicule)" title="Modifier le véhicule">
+                      <span class="material-icons">edit</span>
+                    </button>
+                    <button class="btn-table-action delete" (click)="supprimerVehicule(vehicule.id, vehicule.immatriculation)" title="Supprimer le véhicule">
+                      <span class="material-icons">delete</span>
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            } @empty {
+              <tr>
+                <td colspan="7" class="text-center py-8">
+                  <div class="empty-state">
+                    <span class="material-icons font-size-xl">directions_car</span>
+                    <p>Aucun véhicule ne correspond à votre recherche.</p>
+                  </div>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Pagination -->
+      <div class="pagination-container">
+        <span class="pagination-info">
+          Affichage de {{ vehiculesAffiches.length }} sur {{ totalVehicules }} véhicule(s)
+        </span>
+        <div class="pagination-buttons">
+          <button class="btn-pag" [disabled]="pageActuelle === 1" (click)="pagePrecedente()">
+            <span class="material-icons">chevron_left</span>
+          </button>
+          @for (p of [].constructor(totalPages); track $index) {
+            <button 
+              class="btn-pag" 
+              [class.active]="pageActuelle === $index + 1"
+              (click)="changerPage($index + 1)">
+              {{ $index + 1 }}
+            </button>
+          }
+          <button class="btn-pag" [disabled]="pageActuelle === totalPages" (click)="pageSuivante()">
+            <span class="material-icons">chevron_right</span>
+          </button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- Modale de création de véhicule -->
+<div class="custom-modal-backdrop" *ngIf="afficherCreationVehicule">
+  <div class="custom-modal-box">
+    <div class="modal-header">
+      <h2>Ajouter un nouveau véhicule</h2>
+      <button class="close-icon-btn" (click)="afficherCreationVehicule = false">
+        <span class="material-icons">close</span>
+      </button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label>Marque</label>
+        <input type="text" [(ngModel)]="nouveauVehicule.marque" placeholder="Ex: Toyota, Mercedes, Renault...">
+      </div>
+      <div class="form-group">
+        <label>Modèle</label>
+        <input type="text" [(ngModel)]="nouveauVehicule.modele" placeholder="Ex: Corolla, C-Class, Clio...">
+      </div>
+      <div class="form-group">
+        <label>Immatriculation</label>
+        <input type="text" [(ngModel)]="nouveauVehicule.immatriculation" placeholder="Ex: AB-123-CD">
+      </div>
+      <div class="form-group">
+        <label>Capacité (nombre de places)</label>
+        <input type="number" [(ngModel)]="nouveauVehicule.capacite" placeholder="Ex: 50">
+      </div>
+      <div class="form-group">
+        <label>Statut</label>
+        <select [(ngModel)]="nouveauVehicule.statut" class="form-select">
+          <option [value]="StatutVehicule.Disponible">Disponible</option>
+          <option [value]="StatutVehicule.En_Service">En Service</option>
+          <option [value]="StatutVehicule.En_maintenance">En Maintenance</option>
+          <option [value]="StatutVehicule.Indisponible">Indisponible</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Image du véhicule</label>
+        <input type="file" (change)="onFileSelected($event)" accept="image/*" class="file-input">
+        <div *ngIf="imagePreview" class="image-preview">
+          <img [src]="imagePreview" alt="Aperçu de l'image">
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-secondary" (click)="afficherCreationVehicule = false">Annuler</button>
+      <button class="btn-primary" (click)="soumettreCreation()">Enregistrer</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modale de modification de véhicule -->
+<div class="custom-modal-backdrop" *ngIf="afficherEditVehicule && vehiculeEditer">
+  <div class="custom-modal-box">
+    <div class="modal-header">
+      <h2>Modifier le véhicule</h2>
+      <button class="close-icon-btn" (click)="afficherEditVehicule = false; vehiculeEditer = null">
+        <span class="material-icons">close</span>
+      </button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label>Marque</label>
+        <input type="text" [(ngModel)]="vehiculeEditer.marque">
+      </div>
+      <div class="form-group">
+        <label>Modèle</label>
+        <input type="text" [(ngModel)]="vehiculeEditer.modele">
+      </div>
+      <div class="form-group">
+        <label>Immatriculation</label>
+        <input type="text" [(ngModel)]="vehiculeEditer.immatriculation">
+      </div>
+      <div class="form-group">
+        <label>Capacité (nombre de places)</label>
+        <input type="number" [(ngModel)]="vehiculeEditer.capacite">
+      </div>
+      <div class="form-group">
+        <label>Statut</label>
+        <select [(ngModel)]="vehiculeEditer.statut" class="form-select">
+          <option [value]="StatutVehicule.Disponible">Disponible</option>
+          <option [value]="StatutVehicule.En_Service">En Service</option>
+          <option [value]="StatutVehicule.En_maintenance">En Maintenance</option>
+          <option [value]="StatutVehicule.Indisponible">Indisponible</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Image du véhicule</label>
+        <input type="file" (change)="onFileSelected($event)" accept="image/*" class="file-input">
+        <div *ngIf="imagePreview" class="image-preview">
+          <img [src]="imagePreview" alt="Aperçu de l'image">
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-secondary" (click)="afficherEditVehicule = false; vehiculeEditer = null">Annuler</button>
+      <button class="btn-primary" (click)="soumettreModification()">Enregistrer les modifications</button>
+    </div>
+  </div>
+</div>
