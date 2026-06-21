@@ -61,6 +61,12 @@ export class Reservations implements OnInit {
   trajets: Trajet[] = [];
   users: UserResponse[] = [];
 
+  // Pagination
+  currentPage: number = 1;
+  itemsPerPage: number = 5;
+  paginatedReservations: Reservation[] = [];
+  totalPages: number = 1;
+
   // Plan de sièges 
   siegesOccupes: string[] = [];
   siegesSelectionnes: string[] = [];
@@ -139,6 +145,7 @@ export class Reservations implements OnInit {
         this.trajets      = results.trajets      || [];
         this.users        = results.users        || [];
         this.applyFilter();
+        this.updatePagination();
         this.isLoading = false;
         this.cd.detectChanges();
       },
@@ -159,6 +166,59 @@ export class Reservations implements OnInit {
         trajet?.villeArrivee?.nomVille?.toLowerCase().includes(term) ||
         r.nomResponsable?.toLowerCase().includes(term);
     });
+    this.currentPage = 1;
+    this.updatePagination();
+  }
+
+  updatePagination(): void {
+    this.totalPages = Math.ceil(this.filteredReservations.length / this.itemsPerPage) || 1;
+    const startIndex = (this.currentPage - 1) * this.itemsPerPage;
+    const endIndex = startIndex + this.itemsPerPage;
+    this.paginatedReservations = this.filteredReservations.slice(startIndex, endIndex);
+  }
+
+  changePage(page: number): void {
+    if (page < 1 || page > this.totalPages) return;
+    this.currentPage = page;
+    this.updatePagination();
+  }
+
+  getPaginationPages(): number[] {
+    const pages: number[] = [];
+    const maxVisiblePages = 5;
+    
+    if (this.totalPages <= maxVisiblePages) {
+      for (let i = 1; i <= this.totalPages; i++) {
+        pages.push(i);
+      }
+    } else {
+      const startPage = Math.max(1, this.currentPage - Math.floor(maxVisiblePages / 2));
+      const endPage = Math.min(this.totalPages, startPage + maxVisiblePages - 1);
+      
+      for (let i = startPage; i <= endPage; i++) {
+        pages.push(i);
+      }
+    }
+    
+    return pages;
+  }
+
+  // Button visibility conditions
+  canEdit(reservation: Reservation): boolean {
+    return reservation.statut === StatutReservation.EN_ATTENTE;
+  }
+
+  canCancel(reservation: Reservation): boolean {
+    return reservation.statut === StatutReservation.EN_ATTENTE ||
+           reservation.statut === StatutReservation.CONFIRMEE;
+  }
+
+  canPay(reservation: Reservation): boolean {
+    return reservation.statut === StatutReservation.EN_ATTENTE;
+  }
+
+  canExportPdf(reservation: Reservation): boolean {
+    return !!(reservation.billets && reservation.billets.length > 0);
   }
 
   // Méthode appelée quand le trajet change (à brancher sur le select)
@@ -300,9 +360,14 @@ export class Reservations implements OnInit {
         const r = this.reservations.find(res => res.id === id);
         if (r) r.statut = StatutReservation.ANNULEE;
         this.applyFilter();
+        this.updatePagination();
         this.cd.detectChanges();
       },
-      error: () => alert('Erreur lors de l\'annulation.')
+      error: err => {
+        console.error('Erreur annulation:', err);
+        const errorMsg = err.error?.message || err.error || 'Erreur lors de l\'annulation.';
+        alert(errorMsg);
+      }
     });
   }
 
@@ -374,6 +439,7 @@ export class Reservations implements OnInit {
         const r = this.reservations.find(res => res.id === this.reservationEnCours!.id);
         if (r) r.statut = StatutReservation.CONFIRMEE;
         this.applyFilter();
+        this.updatePagination();
         this.cd.detectChanges();
 
         setTimeout(() => this.closePaiementModal(), 2000);
@@ -750,6 +816,7 @@ export class Reservations implements OnInit {
           this.formSuccess  = 'Réservation créée avec succès.';
           this.reservations.push(nouvelle);
           this.applyFilter();
+          this.updatePagination();
           setTimeout(() => this.closeModal(), 1500);
         },
         error: err => { this.isSubmitting = false; this.formError = err.error?.message || 'Erreur.'; }
@@ -763,6 +830,7 @@ export class Reservations implements OnInit {
           const index = this.reservations.findIndex(r => r.id === this.editingId);
           if (index !== -1) this.reservations[index] = modifiee;
           this.applyFilter();
+          this.updatePagination();
           setTimeout(() => this.closeModal(), 1500);
         },
         error: err => { this.isSubmitting = false; this.formError = err.error?.message || 'Erreur.'; }

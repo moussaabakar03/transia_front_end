@@ -202,6 +202,13 @@ export class Trajets implements OnInit {
       alert('Veuillez remplir tous les champs obligatoires.');
       return;
     }
+
+    // Validation : ville de départ et d'arrivée doivent être différentes
+    if (this.nouveauTrajet.villeDepartId === this.nouveauTrajet.villeArriveeId) {
+      alert('La ville de départ et la ville d\'arrivée doivent être différentes.');
+      return;
+    }
+
     this.trajetService.create(this.nouveauTrajet).subscribe({
       next: () => {
         this.afficherCreationTrajet = false;
@@ -231,6 +238,12 @@ export class Trajets implements OnInit {
       heureDepart: this.trajetEditer.heureDepart,
       statut: this.trajetEditer.statut
     };
+
+    // Validation : ville de départ et d'arrivée doivent être différentes
+    if (payload.villeDepartId === payload.villeArriveeId) {
+      alert('La ville de départ et la ville d\'arrivée doivent être différentes.');
+      return;
+    }
 
     this.trajetService.update(this.trajetEditer.id, payload).subscribe({
       next: () => {

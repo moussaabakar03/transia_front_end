@@ -9,6 +9,7 @@ import { Villes } from './fonctionnalites/transport/villes/villes';
 import { Vehicules } from './fonctionnalites/transport/vehicules/vehicules';
 import { Trajets } from './fonctionnalites/transport/trajets/trajets';
 import { Reservations } from './fonctionnalites/reservations/reservations';
+import { Feedbacks } from './fonctionnalites/feedbacks/feedbacks';
 
 export const routes: Routes = [
   { path: '', redirectTo: 'login', pathMatch: 'full' },
@@ -27,6 +28,9 @@ export const routes: Routes = [
 
   // Réservations
   { path: 'reservations',          component: Reservations,       canActivate: [authGuard] },
+
+  // Feedbacks
+  { path: 'feedbacks',             component: Feedbacks,          canActivate: [authGuard] },
 
   { path: '**', redirectTo: 'login' }
 ];

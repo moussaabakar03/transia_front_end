@@ -166,6 +166,30 @@ app-sidebar {
   }
 }
 
+.vehicule-image {
+  width: 60px;
+  height: 60px;
+  object-fit: cover;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+}
+
+.vehicule-image-placeholder {
+  width: 60px;
+  height: 60px;
+  border-radius: 8px;
+  background-color: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #94a3b8;
+
+  .material-icons {
+    font-size: 24px;
+  }
+}
+
 .vehicule-id-tag {
   font-family: monospace;
   background-color: #f1f5f9;
@@ -362,8 +386,9 @@ app-sidebar {
   border-radius: 24px;
   width: 100%;
   max-width: 480px;
+  max-height: 90vh;
+  overflow-y: auto;
   box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
-  overflow: hidden;
   animation: modalFadeIn 0.25s ease-out;
 
   .modal-header {
@@ -372,6 +397,10 @@ app-sidebar {
     display: flex;
     justify-content: space-between;
     align-items: center;
+    position: sticky;
+    top: 0;
+    background: #ffffff;
+    z-index: 1;
 
     h2 {
       margin: 0;
@@ -537,6 +566,34 @@ app-sidebar {
     flex-direction: column;
     align-items: flex-start;
     gap: 12px;
+  }
+
+  .custom-modal-backdrop {
+    padding: 16px;
+  }
+
+  .custom-modal-box {
+    max-width: 100%;
+    max-height: 95vh;
+    border-radius: 16px;
+
+    .modal-header {
+      padding: 16px 20px;
+    }
+
+    .modal-body {
+      padding: 20px;
+    }
+
+    .modal-footer {
+      padding: 16px 20px;
+      flex-direction: column;
+      gap: 12px;
+
+      button {
+        width: 100%;
+      }
+    }
   }
 }
 

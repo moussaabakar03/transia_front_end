@@ -26,7 +26,7 @@
           [(ngModel)]="searchTerm"
           (input)="applyFilter()"
         />
-        <span class="count-badge">{{ filteredReservations.length }} résultat(s)</span>
+        <span class="count-badge" style="width: 100px;">{{ filteredReservations.length }} résultat(s)</span>
         <button class="btn-refresh" (click)="loadData()" title="Actualiser">
           <span class="material-icons">refresh</span>
         </button>
@@ -76,9 +76,9 @@
             </tr>
 
             <!-- Lignes -->
-            <tr *ngFor="let res of filteredReservations; let i = index">
+            <tr *ngFor="let res of paginatedReservations; let i = index">
               <!-- # -->
-              <td><span class="row-num">{{ i+1 }}</span></td>
+              <td><span class="row-num">{{ (currentPage - 1) * itemsPerPage + i + 1 }}</span></td>
 
               <!-- Trajet -->
               <td>
@@ -133,18 +133,19 @@
                     <span class="material-icons">visibility</span>
                   </button>
                   <button class="btn-table-action edit" (click)="onEdit(res.id!)" 
-                          [disabled]="res.statut !== 'EN_ATTENTE'" title="Modifier">
+                          *ngIf="canEdit(res)" title="Modifier">
                     <span class="material-icons">edit</span>
                   </button>
-                  <button class="btn-table-action payer" (click)="onPayer(res.id!)" title="Encaisser">
+                  <button class="btn-table-action payer" (click)="onPayer(res.id!)" 
+                          *ngIf="canPay(res)" title="Encaisser">
                     <span class="material-icons">payments</span>
                   </button>
                   <button class="btn-table-action pdf" (click)="exporterBilletsPDF(res.id!)" 
-                          [disabled]="!res.billets || res.billets.length === 0" title="Exporter PDF">
+                          *ngIf="canExportPdf(res)" title="Exporter PDF">
                     <span class="material-icons">picture_as_pdf</span>
                   </button>
                   <button class="btn-table-action delete" (click)="onAnnuler(res.id!)" 
-                          [disabled]="res.statut !== 'EN_ATTENTE' && res.statut !== 'CONFIRMEE'" title="Annuler">
+                          *ngIf="canCancel(res)" title="Annuler">
                     <span class="material-icons">cancel</span>
                   </button>
                 </div>
@@ -152,6 +153,28 @@
             </tr>
           </tbody>
         </table>
+
+        <!-- Pagination -->
+        <div *ngIf="filteredReservations.length > 0" class="pagination-container">
+          <div class="pagination-info">
+            <!-- Affichage de {{ (currentPage - 1) * itemsPerPage + 1 }} à {{ Math.min(currentPage * itemsPerPage, filteredReservations.length) }} sur {{ filteredReservations.length }} réservation(s) -->
+            Affichage de {{ (currentPage - 1) * itemsPerPage + 1 }} à {{ filteredReservations.length }} réservation(s)
+
+          </div>
+          <div class="pagination-buttons">
+            <button class="btn-pag" (click)="changePage(currentPage - 1)" [disabled]="currentPage === 1">
+              <span class="material-icons">chevron_left</span>
+            </button>
+            <button class="btn-pag" *ngFor="let page of getPaginationPages()" 
+                    [class.active]="page === currentPage"
+                    (click)="changePage(page)">
+              {{ page }}
+            </button>
+            <button class="btn-pag" (click)="changePage(currentPage + 1)" [disabled]="currentPage === totalPages">
+              <span class="material-icons">chevron_right</span>
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   </div>

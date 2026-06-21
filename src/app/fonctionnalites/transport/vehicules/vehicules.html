@@ -34,6 +34,7 @@
           <thead>
             <tr>
               <th>ID</th>
+              <th>IMAGE</th>
               <th>MARQUE</th>
               <th>MODÈLE</th>
               <th>IMMATRICULATION</th>
@@ -47,6 +48,15 @@
               <tr>
                 <td>
                   <span class="vehicule-id-tag">#VH-{{ vehicule.id?.substring(0,5) || 'N/A' }}</span>
+                </td>
+                <td>
+                  @if (vehicule.image) {
+                    <img [src]="vehicule.image" class="vehicule-image" alt="{{ vehicule.marque }} {{ vehicule.modele }}" />
+                  } @else {
+                    <div class="vehicule-image-placeholder">
+                      <span class="material-icons">directions_car</span>
+                    </div>
+                  }
                 </td>
                 <td>
                   <div class="vehicule-name-cell">
