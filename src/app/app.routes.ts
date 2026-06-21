@@ -8,6 +8,7 @@ import { authGuard } from './core/guards/auth.guard';
 import { Villes } from './fonctionnalites/transport/villes/villes';
 import { Vehicules } from './fonctionnalites/transport/vehicules/vehicules';
 import { Trajets } from './fonctionnalites/transport/trajets/trajets';
+import { Reservations } from './fonctionnalites/reservations/reservations';
 
 export const routes: Routes = [
   { path: '', redirectTo: 'login', pathMatch: 'full' },
@@ -22,7 +23,10 @@ export const routes: Routes = [
   // Routes transport
   { path: 'villes',                component: Villes,             canActivate: [authGuard] },
   { path: 'vehicules',             component: Vehicules,          canActivate: [authGuard] },
-  { path: 'trajets',               component: Trajets,          canActivate: [authGuard] },
+  { path: 'trajets',               component: Trajets,            canActivate: [authGuard] },
+
+  // Réservations
+  { path: 'reservations',          component: Reservations,       canActivate: [authGuard] },
 
   { path: '**', redirectTo: 'login' }
 ];

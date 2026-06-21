@@ -1,0 +1,594 @@
+<div class="dashboard-layout">
+  <app-sidebar></app-sidebar>
+
+  <div class="main-content-area">
+    <app-header (actionCreer)="openModal()"></app-header>
+    
+    <div class="page-body">
+      <div class="dashboard-action-bar">
+        <div class="welcome-text">
+          <h1>Gestion des Réservations</h1>
+          <p>Suivez et gérez l'ensemble des réservations clients</p>
+        </div>
+        
+        <button class="btn-blue-action-local" (click)="openModal()">
+          <span class="material-icons">add</span>
+          NOUVELLE RÉSERVATION
+        </button>
+      </div>
+
+      <!-- Barre de Recherche -->
+      <div class="search-bar">
+        <span class="material-icons">search</span>
+        <input
+          type="text"
+          placeholder="Rechercher par ville, passager, responsable..."
+          [(ngModel)]="searchTerm"
+          (input)="applyFilter()"
+        />
+        <span class="count-badge">{{ filteredReservations.length }} résultat(s)</span>
+        <button class="btn-refresh" (click)="loadData()" title="Actualiser">
+          <span class="material-icons">refresh</span>
+        </button>
+      </div>
+
+      <!-- Chargement -->
+      <div *ngIf="isLoading" class="loading-state">
+        <div class="spinner"></div>
+        <p>Chargement des réservations...</p>
+      </div>
+
+      <!-- Erreur -->
+      <div *ngIf="errorMessage && !isLoading" class="alert-error">
+        <span class="material-icons">error_outline</span>
+        <span>{{ errorMessage }}</span>
+        <button (click)="loadData()">Réessayer</button>
+      </div>
+
+      <!-- Tableau des Réservations -->
+      <div *ngIf="!isLoading && !errorMessage" class="table-container-reservations">
+        <table class="custom-reservations-table">
+          <thead>
+            <tr>
+              <th style="width:50px">#</th>
+              <th>Trajet</th>
+              <th>Date</th>
+              <th>Places</th>
+              <th>Responsable</th>
+              <th>Type</th>
+              <th>Statut</th>
+              <th style="width:180px; text-align:right">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            <!-- Empty state -->
+            <tr *ngIf="filteredReservations.length === 0">
+              <td colspan="8" class="text-center py-8">
+                <div class="empty-state">
+                  <span class="material-icons font-size-xl">confirmation_number</span>
+                  <p>Aucune réservation trouvée</p>
+                  <button class="btn-blue-action-local" (click)="openModal()">
+                    <span class="material-icons">add</span>
+                    Nouvelle réservation
+                  </button>
+                </div>
+              </td>
+            </tr>
+
+            <!-- Lignes -->
+            <tr *ngFor="let res of filteredReservations; let i = index">
+              <!-- # -->
+              <td><span class="row-num">{{ i+1 }}</span></td>
+
+              <!-- Trajet -->
+              <td>
+                <div class="route-cell">
+                  <span class="material-icons location-icon">route</span>
+                  <span>{{ getTrajetDescription(res.trajetId) }}</span>
+                </div>
+              </td>
+
+              <!-- Date -->
+              <td>
+                <span class="date-chip">{{ res.dateReservation | date:'dd/MM/yy HH:mm' }}</span>
+              </td>
+
+              <!-- Places -->
+              <td>
+                <div class="capacity-cell">
+                  <span class="material-icons">event_seat</span>
+                  <span>{{ res.nombrePlace }}</span>
+                </div>
+              </td>
+
+              <!-- Responsable -->
+              <td>
+                <span class="fw-medium">{{ res.nomResponsable || '—' }}</span>
+              </td>
+
+              <!-- Type -->
+              <td>
+                <span class="type-badge"
+                      [class.type-enligne]="res.typeReservation === 0"
+                      [class.type-presentiel]="res.typeReservation !== 0">
+                  {{ res.typeReservation === 0 ? 'En ligne' : 'Présentiel' }}
+                </span>
+              </td>
+
+              <!-- Statut -->
+              <td>
+                <span class="statut-badge"
+                      [class.statut-en-attente]="res.statut === 'EN_ATTENTE'"
+                      [class.statut-confirmee]="res.statut === 'CONFIRMEE'"
+                      [class.statut-annulee]="res.statut === 'ANNULEE'"
+                      [class.statut-expiree]="res.statut === 'EXPIREE'">
+                  {{ getStatutLabel(res.statut) }}
+                </span>
+              </td>
+
+              <!-- Actions -->
+              <td style="text-align:right">
+                <div class="actions-wrapper">
+                  <button class="btn-table-action view" (click)="onView(res.id!)" title="Voir">
+                    <span class="material-icons">visibility</span>
+                  </button>
+                  <button class="btn-table-action edit" (click)="onEdit(res.id!)" 
+                          [disabled]="res.statut !== 'EN_ATTENTE'" title="Modifier">
+                    <span class="material-icons">edit</span>
+                  </button>
+                  <button class="btn-table-action payer" (click)="onPayer(res.id!)" title="Encaisser">
+                    <span class="material-icons">payments</span>
+                  </button>
+                  <button class="btn-table-action pdf" (click)="exporterBilletsPDF(res.id!)" 
+                          [disabled]="!res.billets || res.billets.length === 0" title="Exporter PDF">
+                    <span class="material-icons">picture_as_pdf</span>
+                  </button>
+                  <button class="btn-table-action delete" (click)="onAnnuler(res.id!)" 
+                          [disabled]="res.statut !== 'EN_ATTENTE' && res.statut !== 'CONFIRMEE'" title="Annuler">
+                    <span class="material-icons">cancel</span>
+                  </button>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════
+     MODAL — RÉSERVATION (AJOUT / MODIF / VISU)
+     ═══════════════════════════════════════════════════ -->
+<div class="modal-overlay" [class.show]="isModalOpen" (click)="closeModal()">
+  <div class="modal-sheet" role="dialog" aria-modal="true" (click)="$event.stopPropagation()">
+
+    <!-- Barre de titre -->
+    <div class="modal-top-bar">
+      <div class="modal-top-icon">
+        <span class="material-icons">confirmation_number</span>
+      </div>
+      <div class="modal-top-title">
+        <h5>
+          {{ modalMode === 'ajout' ? 'Nouvelle réservation'
+           : modalMode === 'visualisation' ? 'Détails de la réservation'
+           : 'Modifier la réservation' }}
+        </h5>
+        <p>
+          {{ modalMode === 'ajout' ? 'Renseignez les informations de la réservation'
+           : modalMode === 'visualisation' ? 'Consultation des informations'
+           : 'Mettez à jour les informations' }}
+        </p>
+      </div>
+      <button class="modal-top-close" (click)="closeModal()" [disabled]="isSubmitting"
+              aria-label="Fermer">
+        <span class="material-icons">close</span>
+      </button>
+    </div>
+
+    <!-- Corps -->
+    <div class="modal-content-area">
+
+      <!-- Alertes -->
+      <div *ngIf="formError" class="alert-error">
+        <span class="material-icons">error</span> {{ formError }}
+      </div>
+      <div *ngIf="formSuccess" class="alert-success">
+        <span class="material-icons">check_circle</span> {{ formSuccess }}
+      </div>
+
+      <!-- ══ VISUALISATION ══ -->
+      <div *ngIf="modalMode === 'visualisation'">
+        <div class="form-section">
+          <div class="form-section-title">Détails de la réservation</div>
+          <div class="view-grid">
+            <div class="detail-item">
+              <div class="detail-item-label"><span class="material-icons">route</span> Trajet</div>
+              <div class="detail-item-value">{{ getTrajetDescription(form.trajetId) }}</div>
+            </div>
+            <div class="detail-item">
+              <div class="detail-item-label"><span class="material-icons">event_seat</span> Places</div>
+              <div class="detail-item-value">{{ form.nombrePlace }}</div>
+            </div>
+            <div class="detail-item">
+              <div class="detail-item-label"><span class="material-icons">label</span> Type</div>
+              <div class="detail-item-value">
+                <span class="type-badge"
+                      [class.type-enligne]="form.typeReservation === 0"
+                      [class.type-presentiel]="form.typeReservation !== 0">
+                  {{ form.typeReservation === 0 ? 'En ligne' : 'Présentiel' }}
+                </span>
+              </div>
+            </div>
+            <div class="detail-item">
+              <div class="detail-item-label"><span class="material-icons">person</span> Responsable</div>
+              <div class="detail-item-value">{{ form.nomResponsable }}</div>
+            </div>
+            <div class="detail-item">
+              <div class="detail-item-label"><span class="material-icons">attach_money</span> Montant total</div>
+              <div class="detail-item-value value-success">
+                {{ (getTrajet(form.trajetId)?.tarif || 0) * form.nombrePlace | number }} FCFA
+              </div>
+            </div>
+            <div class="detail-item" style="grid-column:1/-1">
+              <div class="detail-item-label"><span class="material-icons">group</span> Autres passagers</div>
+              <div class="detail-item-value">
+                <span *ngIf="form.nomsPassagers.length === 0" class="text-muted fst-italic">
+                  Noms auto générés
+                </span>
+                <span *ngFor="let n of form.nomsPassagers; let j = index"
+                      class="badge-passager">
+                  {{ n }}
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Billets -->
+        <div class="form-section" *ngIf="form.billets.length > 0">
+          <div class="form-section-title">Billets générés</div>
+          <div class="billets-grid">
+            <div class="billet-card" *ngFor="let billet of form.billets; let i = index">
+              <img [src]="getQrUrl(billet.qrCode || '')" [alt]="'QR Code ' + billet.nomPassager" class="billet-qr-img" loading="lazy" />
+              <h6 class="fw-semibold">{{ billet.nomPassager }}</h6>
+              <span class="badge-siege">Siège {{ billet.numeroSiege || '—' }}</span>
+              <span class="statut-badge"
+                    [class.statut-confirmee]="billet.statut === 'VALIDE'"
+                    [class.statut-en-attente]="billet.statut === 'EN_ATTENTE'">
+                {{ billet.statut === 'VALIDE' ? 'Payé' : 'En attente' }}
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ══ FORMULAIRE ══ -->
+      <div *ngIf="modalMode !== 'visualisation'">
+        <div class="form-section">
+          <div class="form-section-title">Informations</div>
+          <div class="form-grid">
+
+            <div class="form-field-full">
+              <label>Trajet <span class="required">*</span></label>
+              <div class="input-wrap">
+                <span class="material-icons input-icon">route</span>
+                <select class="form-select"
+                  [(ngModel)]="form.trajetId"
+                  [disabled]="isSubmitting"
+                  (ngModelChange)="onTrajetChange(); onFieldChange('trajetId')">
+                  <option value="">— Sélectionner un trajet —</option>
+                  <option *ngFor="let t of trajets" [value]="t.id">
+                    {{ t.villeDepart.nomVille }} → {{ t.villeArrivee.nomVille }}
+                    — {{ t.dateDepart }} {{ t.heureDepart }}
+                    — {{ t.tarif | number }} FCFA/place
+                  </option>
+                </select>
+              </div>
+              <span *ngIf="formErrors.trajetId" class="field-error-msg">
+                <span class="material-icons">error_outline</span> {{ formErrors.trajetId }}
+              </span>
+            </div>
+
+            <div class="form-field-half">
+              <label>Nombre de places <span class="required">*</span></label>
+              <div class="input-wrap">
+                <span class="material-icons input-icon">event_seat</span>
+                <input type="number" min="1" class="form-control"
+                       [(ngModel)]="form.nombrePlace"
+                       [disabled]="isSubmitting"
+                       (ngModelChange)="onNombrePlaceChange()" 
+                       [max]="nombrePlacesDisponibles"/>
+              </div>
+              <span *ngIf="formErrors.nombrePlace" class="field-error-msg">
+                <span class="material-icons">error_outline</span> {{ formErrors.nombrePlace }}
+              </span>
+            </div>
+
+            <!-- Plan de sièges -->
+            <div class="form-field-full" *ngIf="form.trajetId && siegesDisponibles.length > 0">
+              <div class="seat-selection-card">
+                <h6><span class="material-icons">event_seat</span> Choisissez vos sièges (<span style="color: red;">{{ siegesSelectionnes.length }}</span> / {{ form.nombrePlace }}) ==> (Place disponible: {{ siegesDisponibles.length - siegesOccupes.length }})</h6>
+                <p class="text-muted" style="font-size:13px">
+                  <span class="material-icons" style="font-size:14px">info</span>
+                  {{ siegesOccupes.length > 0 ? 'Les sièges en gris sont déjà occupés pour ce trajet.' : 'Tous les sièges sont disponibles pour ce trajet.' }}
+                </p>
+                <div class="seat-grid">
+                  <button *ngFor="let siege of siegesDisponibles"
+                          class="seat-btn"
+                          [class.occupied]="siegesOccupes.includes(siegeToString(siege))"
+                          [class.selected]="siegesSelectionnes.includes(siegeToString(siege))"
+                          [disabled]="siegesOccupes.includes(siegeToString(siege))"
+                          (click)="toggleSiege(siege)"
+                          [attr.aria-label]="'Siège ' + siege">
+                    {{ siege }}
+                  </button>
+                </div>
+                <div class="seat-legend">
+                  <span><span class="seat-legend-dot available"></span> Disponible</span>
+                  <span><span class="seat-legend-dot occupied"></span> Occupé</span>
+                  <span><span class="seat-legend-dot selected"></span> Sélectionné</span>
+                </div>
+                <p class="text-muted small mt-2">
+                  <span class="material-icons" style="font-size:14px">info</span> 
+                  {{ siegesSelectionnes.length }} / {{ form.nombrePlace }} siège(s) choisi(s).
+                </p>
+              </div>
+            </div>
+
+            <div class="form-field-half">
+              <label>Nom du responsable <span class="required">*</span></label>
+              <div class="input-wrap">
+                <span class="material-icons input-icon">person</span>
+                <input type="text" class="form-control" placeholder="Ex : Jean Dupont"
+                       [(ngModel)]="form.nomResponsable"
+                       [disabled]="isSubmitting"
+                       (ngModelChange)="onFieldChange('nomResponsable')" />
+              </div>
+              <span *ngIf="formErrors.nomResponsable" class="field-error-msg">
+                <span class="material-icons">error_outline</span> {{ formErrors.nomResponsable }}
+              </span>
+            </div>
+
+            <!-- Récap montant -->
+            <div class="form-field-full" *ngIf="form.trajetId && form.nombrePlace >= 1">
+              <div class="amount-recap">
+                <span><span class="material-icons">calculate</span> Montant à payer</span>
+                <strong>
+                  {{ (getTrajet(form.trajetId)?.tarif || 0) | number }} × {{ form.nombrePlace }}
+                  = {{ (getTrajet(form.trajetId)?.tarif || 0) * form.nombrePlace | number }} FCFA
+                </strong>
+              </div>
+            </div>
+
+            <!-- Passagers supplémentaires -->
+            <div class="form-field-full" *ngIf="nombrePassagersSupplementaires > 0">
+              <div class="passagers-card">
+                <p class="fw-semibold mb-2">
+                  <span class="material-icons text-primary">group</span>
+                  Voulez-vous saisir les noms des autres passagers ?
+                  <span class="text-muted fw-normal small ms-1">
+                    ({{ nombrePassagersSupplementaires }} passager(s) supplémentaire(s))
+                  </span>
+                </p>
+                <div class="radio-group">
+                  <label class="radio-label">
+                    <input type="radio" name="saisiePassagers" 
+                           [checked]="saisirNomsPassagers === true"
+                           (change)="onChoixSaisie(true)" />
+                    <span class="material-icons">edit</span> Oui, je saisis les noms
+                  </label>
+                  <label class="radio-label">
+                    <input type="radio" name="saisiePassagers"
+                           [checked]="saisirNomsPassagers === false"
+                           (change)="onChoixSaisie(false)" />
+                    <span class="material-icons">auto_fix_high</span> Non, noms auto générés
+                  </label>
+                </div>
+
+                <div *ngIf="saisirNomsPassagers === false"
+                     class="info-alert">
+                  <span class="material-icons">info</span>
+                  <span class="small">
+                    Les {{ nombrePassagersSupplementaires }} passager(s) seront nommés
+                    <strong>« Invité N de {{ form.nomResponsable || 'Responsable' }} »</strong>.
+                  </span>
+                </div>
+
+                <div *ngIf="saisirNomsPassagers === true">
+                  <div *ngFor="let champ of champsPassagers; let j = index"
+                       class="passager-input-row">
+                    <span class="badge-number">{{ j+2 }}</span>
+                    <input type="text" class="form-control form-control-sm"
+                           [placeholder]="'Nom du passager ' + (j+2) + ' (optionnel)'"
+                           [(ngModel)]="champsPassagers[j]"
+                           [disabled]="isSubmitting" />
+                    <button type="button" class="btn-delete-passager"
+                            (click)="supprimerChampPassager(j)" [disabled]="isSubmitting">
+                      <span class="material-icons">delete</span>
+                    </button>
+                  </div>
+                  <div *ngIf="champsPassagers.length < nombrePassagersSupplementaires"
+                       class="warning-alert">
+                    <span class="material-icons">warning</span>
+                    <span class="small">
+                      {{ nombrePassagersSupplementaires - champsPassagers.length }} passager(s)
+                      sans nom → nom automatique attribué.
+                    </span>
+                  </div>
+                  <button *ngIf="champsPassagers.length < nombrePassagersSupplementaires"
+                          type="button" class="btn-add-passager"
+                          (click)="ajouterChampPassager()" [disabled]="isSubmitting">
+                    <span class="material-icons">add</span> Ajouter un champ
+                  </button>
+                  <p class="text-muted small mb-0 mt-2">
+                    <span class="material-icons" style="font-size:14px">lightbulb</span>
+                    Champ vide = nom automatique attribué par le système.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Pied -->
+    <div class="modal-actions">
+      <button *ngIf="modalMode === 'visualisation' && form.billets.length > 0"
+          class="btn-pdf-export" (click)="exporterBilletsPDF(editingId!)">
+        <span class="material-icons">picture_as_pdf</span> Exporter les billets PDF
+      </button>
+
+      <button class="btn-cancel" (click)="closeModal()" [disabled]="isSubmitting">
+        {{ modalMode === 'visualisation' ? 'Fermer' : 'Annuler' }}
+      </button>
+      
+      <button *ngIf="modalMode !== 'visualisation'"
+              class="btn-primary" (click)="submitForm()" [disabled]="isSubmitting">
+        <span *ngIf="isSubmitting" class="spinner-small"></span>
+        <span *ngIf="!isSubmitting" class="material-icons">save</span>
+        {{ isSubmitting
+           ? (modalMode === 'ajout' ? 'Enregistrement...' : 'Modification...')
+           : (modalMode === 'ajout' ? 'Enregistrer la réservation' : 'Enregistrer les modifications') }}
+      </button>
+    </div>
+
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════
+     MODAL — PAIEMENT CAISSE
+     ═══════════════════════════════════════════════════ -->
+<div class="modal-overlay" [class.show]="isPaiementModalOpen" (click)="closePaiementModal()">
+  <div class="modal-sheet modal-sheet-sm" role="dialog" aria-modal="true" (click)="$event.stopPropagation()">
+
+    <!-- Barre de titre -->
+    <div class="modal-top-bar">
+      <div class="modal-top-icon payment-icon">
+        <span class="material-icons">payments</span>
+      </div>
+      <div class="modal-top-title">
+        <h5>Encaissement — Paiement caisse</h5>
+        <p *ngIf="reservationEnCours">
+          {{ getTrajetDescription(reservationEnCours.trajetId) }}
+          &mdash; {{ reservationEnCours.nomResponsable }}
+        </p>
+      </div>
+      <button class="modal-top-close" (click)="closePaiementModal()"
+              [disabled]="isPaiementSubmitting" aria-label="Fermer">
+        <span class="material-icons">close</span>
+      </button>
+    </div>
+
+    <!-- Corps -->
+    <div class="modal-content-area" *ngIf="reservationEnCours">
+
+      <!-- Alertes -->
+      <div *ngIf="paiementError" class="alert-error">
+        <span class="material-icons">error</span> {{ paiementError }}
+      </div>
+      <div *ngIf="paiementSuccess" class="alert-success">
+        <span class="material-icons">check_circle</span> {{ paiementSuccess }}
+      </div>
+
+      <!-- Récap réservation -->
+      <div class="payment-recap">
+        <div class="recap-item">
+          <div class="small text-muted">Places</div>
+          <div class="fw-bold fs-5">{{ reservationEnCours.nombrePlace }}</div>
+        </div>
+        <div class="recap-item">
+          <div class="small text-muted">Tarif / place</div>
+          <div class="fw-bold fs-5">
+            {{ getTrajet(reservationEnCours.trajetId)?.tarif | number }} FCFA
+          </div>
+        </div>
+        <div class="recap-item">
+          <div class="small text-muted">Total à payer</div>
+          <div class="fw-bold fs-4 text-primary">
+            {{ montantAttendu | number }} FCFA
+          </div>
+        </div>
+      </div>
+
+      <div class="payment-form">
+        <!-- Montant versé -->
+        <div class="form-field-full">
+          <label>Montant versé (FCFA) <span class="required">*</span></label>
+          <div class="input-wrap">
+            <span class="material-icons input-icon">payments</span>
+            <input type="number" class="form-control form-control-lg"
+                   [min]="montantAttendu"
+                   [(ngModel)]="paiementForm.montantVerse"
+                   [disabled]="isPaiementSubmitting"
+                   placeholder="Saisir le montant reçu" />
+          </div>
+          <span *ngIf="paiementErrors.montantVerse" class="field-error-msg">
+            <span class="material-icons">error_outline</span> {{ paiementErrors.montantVerse }}
+          </span>
+          <button type="button" class="btn-exact-amount"
+                  (click)="remplirMontantExact()" [disabled]="isPaiementSubmitting">
+            <span class="material-icons">equals</span> Montant exact
+          </button>
+
+          <!-- Monnaie -->
+          <div *ngIf="paiementForm.montantVerse && montantSuffisant && monnaieARendre > 0"
+               class="change-alert">
+            <span><span class="material-icons">attach_money</span> Monnaie à rendre</span>
+            <strong class="fs-5">{{ monnaieARendre | number }} FCFA</strong>
+          </div>
+          <div *ngIf="paiementForm.montantVerse && montantSuffisant && monnaieARendre === 0"
+               class="exact-alert">
+            <span class="material-icons">check_circle</span> Montant exact.
+          </div>
+        </div>
+
+        <!-- Mode de paiement -->
+        <div class="form-field-full">
+          <label>Mode de paiement <span class="required">*</span></label>
+          <div class="payment-modes-grid">
+            <div *ngFor="let mode of modesPaiement" class="payment-mode-card"
+                 [class.selected]="paiementForm.modePaiement === mode.value"
+                 (click)="!isPaiementSubmitting && (paiementForm.modePaiement = mode.value); paiementErrors.modePaiement = undefined">
+              <span class="material-icons" 
+                    [class.text-primary]="paiementForm.modePaiement === mode.value"
+                    [class.text-muted]="paiementForm.modePaiement !== mode.value">{{ mode.icon }}</span>
+              <span class="small fw-semibold">{{ mode.label }}</span>
+            </div>
+          </div>
+          <span *ngIf="paiementErrors.modePaiement" class="field-error-msg mt-1">
+            <span class="material-icons">error_outline</span> {{ paiementErrors.modePaiement }}
+          </span>
+        </div>
+
+        <!-- Référence -->
+        <div class="form-field-full">
+          <label>Référence de paiement <span class="optional">(optionnel)</span></label>
+          <div class="input-wrap">
+            <span class="material-icons input-icon">tag</span>
+            <input type="text" class="form-control"
+                   [(ngModel)]="paiementForm.reference"
+                   [disabled]="isPaiementSubmitting"
+                   placeholder="Ex : REC-2026-001" />
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Pied -->
+    <div class="modal-actions">
+      <button class="btn-cancel" (click)="closePaiementModal()" [disabled]="isPaiementSubmitting">
+        Annuler
+      </button>
+      <button class="btn-primary" (click)="submitPaiement()" [disabled]="isPaiementSubmitting">
+        <span *ngIf="isPaiementSubmitting" class="spinner-small"></span>
+        <span *ngIf="!isPaiementSubmitting" class="material-icons">check</span>
+        {{ isPaiementSubmitting ? 'Traitement...' : 'Confirmer le paiement' }}
+      </button>
+    </div>
+
+  </div>
+</div>
