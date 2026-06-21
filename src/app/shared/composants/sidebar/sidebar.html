@@ -2,7 +2,7 @@
 
 <div class="sidebar" [class.open]="isOpen">
 
-  <!-- ═══════════ MARQUE / LOGO ═══════════ -->
+  <!--  MARQUE / LOGO  -->
   <div class="brand-container">
     <img src="images/logo-symbole.jpeg" alt="Logo TransIa" class="logo-icon">
     <div class="brand-text">
@@ -17,7 +17,7 @@
     </button>
   </div>
 
-  <!-- ═══════════ MENU PRINCIPAL ═══════════ -->
+  <!--  MENU PRINCIPAL  -->
   <nav class="menu-section">
 
     <!-- Liens Dashboard & Formulaires (Dashboard 2) -->
@@ -37,7 +37,7 @@
     <!-- Séparateur -->
     <div class="menu-separator"></div>
 
-    <!-- ═══════════ RUBRIQUES TRANSPORT (Dashboard 1) ═══════════ -->
+    <!--  RUBRIQUES TRANSPORT (Dashboard 1)  -->
     <a routerLink="/vehicules/liste" routerLinkActive="active" class="menu-link" (click)="close()">
       <i class="material-icons">directions_car</i>
       <span>VÉHICULE</span>
@@ -56,8 +56,8 @@
       <span>RÉSERVATION</span>
     </a>
 
-    <!-- ═══════════ UTILISATEURS & FEEDBACKS ═══════════ -->
-    <a routerLink="/utilisateurs" routerLinkActive="active" class="menu-link" (click)="close()">
+    <!--  UTILISATEURS & FEEDBACKS  -->
+    <a routerLink="/gestion-comptes" routerLinkActive="active" class="menu-link" (click)="close()">
       <i class="material-icons">group</i>
       <span>UTILISATEURS</span>
     </a>
@@ -69,7 +69,7 @@
     <!-- Séparateur -->
     <div class="menu-separator"></div>
 
-    <!-- ═══════════ AUTH / DÉCONNEXION ═══════════ -->
+    <!--  AUTH / DÉCONNEXION  -->
     <a (click)="logout(); close()" class="menu-link logout-link">
       <i class="material-icons">logout</i>
       <span>DÉCONNEXION</span>

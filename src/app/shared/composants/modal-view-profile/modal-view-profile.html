@@ -10,7 +10,7 @@
     <div class="modal-body">
       @if (profil) {
         <div class="profile-avatar-section">
-          <img *ngIf="profil.photo_profil; else defaultAvatar" [src]="profil.photo_profil" alt="Avatar" class="profile-avatar">
+          <img *ngIf="profil.photoProfil; else defaultAvatar" [src]="profil.photoProfil" alt="Avatar" class="profile-avatar">
           <ng-template #defaultAvatar>
             <div class="profile-avatar-placeholder">
               <span class="material-icons">account_circle</span>
@@ -26,26 +26,22 @@
           </div>
           <div class="info-item">
             <label>Email:</label>
-            <span>{{ profil.user.email }}</span>
+            <span>{{ profil.user.username }}</span>
           </div>
           <div class="info-item">
-            <label>Prénom:</label>
-            <span>{{ profil.user.first_name }}</span>
+            <label>Nom complet:</label>
+            <span>{{ profil.user.fullName }}</span>
           </div>
-          <div class="info-item">
-            <label>Nom:</label>
-            <span>{{ profil.user.last_name || '-' }}</span>
-          </div>
-          <div class="info-item">
+          <!-- <div class="info-item">
             <label>Rôle:</label>
-            <span class="role-badge" [ngClass]="profil.user.role.toLowerCase()">
-              {{ getRoleLabel(profil.user.role) }}
+            <span class="role-badge" [ngClass]="profil.user.roles.name.toLowerCase()">
+              {{ getRoleLabel(profil.user.roles.name) }}
             </span>
-          </div>
+          </div> -->
           <div class="info-item">
             <label>Statut:</label>
-            <span class="status-badge" [ngClass]="getStatusClass(profil.user.is_active)">
-              {{ profil.user.is_active ? 'Actif' : 'Inactif' }}
+            <span class="status-badge" [ngClass]="getStatusClass(profil.user.enable)">
+              {{ profil.user.enable ? 'Actif' : 'Inactif' }}
             </span>
           </div>
         </div>
@@ -58,15 +54,15 @@
           </div>
           <div class="info-item">
             <label>Téléphone:</label>
-            <span>{{ profil.user.phone }}</span>
+            <span>{{ profil.telephone }}</span>
           </div>
           <div class="info-item">
             <label>Date de naissance:</label>
-            <span>{{ profil.date_naissance || '-' }}</span>
+            <span>{{ profil.user.createdAt }}</span>
           </div>
           <div class="info-item">
             <label>Date d'inscription:</label>
-            <span>{{ profil.date_inscription | date: 'dd/MM/yyyy' }}</span>
+            <span>{{ profil.user.createdAt | date: 'dd/MM/yyyy' }}</span>
           </div>
         </div>
       }

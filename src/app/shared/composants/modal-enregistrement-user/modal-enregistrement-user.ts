@@ -1,65 +1,86 @@
-
-import { Component, Output, EventEmitter } from '@angular/core';
+import { Component, OnInit, Output, EventEmitter } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { UserService } from '../../../core/services/user-service';
-
+import { ProfilDTO, UserCreateDTO, RoleDTO } from '../../models/users';
 
 @Component({
   selector: 'app-modal-enregistrement-user',
-  imports: [CommonModule, FormsModule ],
+  imports: [CommonModule, FormsModule],
   templateUrl: './modal-enregistrement-user.html',
   styleUrl: './modal-enregistrement-user.scss',
 })
-export class ModalEnregistrementUser {
+export class ModalEnregistrementUser implements OnInit {
   @Output() fermer = new EventEmitter<void>();
   @Output() success = new EventEmitter<any>();
 
-  userData = {
+  userData: UserCreateDTO = {
+    fullName: '',
     username: '',
-    first_name: '',
-    last_name: '',
-    phone: '',
-    email: '', 
     password: '',
-    role: 'ENQUETEUR',
+    roles: null,
+    enable: true
   };
 
-  profilData = {
+  rolesList: RoleDTO[] = [];
+  selectedRoleId: number | null = null;
+
+  profilData: Partial<ProfilDTO> = {
     adresse: '',
-    date_naissance: '',
-    photo_profil: null as File | null
+    telephone: '',
+    photoProfil: null
   };
 
   isLoading = false;
+  isLoadingRoles = false;
   photoPreview: string | null = null;
 
   constructor(private userService: UserService) {}
 
+  ngOnInit(): void {
+    this.isLoadingRoles = true;
+    this.userService.getAllRoles().subscribe({
+      next: (roles) => {
+        this.rolesList = roles;
+        if (roles.length > 0) this.selectedRoleId = roles[0].id;
+        this.isLoadingRoles = false;
+      },
+      error: (err) => {
+        console.error('Erreur chargement rôles', err);
+        this.isLoadingRoles = false;
+      }
+    });
+  }
+
   onFileSelected(event: any) {
     const file = event.target.files[0];
     if (file) {
-      this.profilData.photo_profil = file;
-      // Aperçu
       const reader = new FileReader();
-      reader.onload = (e) => this.photoPreview = e.target?.result as string;
+      reader.onload = (e: any) => {
+        this.photoPreview = e.target.result;
+        this.profilData.photoProfil = e.target.result;
+      };
       reader.readAsDataURL(file);
     }
   }
 
   submit() {
-    if (!this.userData.username || !this.userData.email || !this.userData.password) {
-      alert('Veuillez remplir tous les champs obligatoires');
+    if (!this.userData.username || !this.userData.password || !this.userData.fullName) {
+      alert('Veuillez remplir tous les champs obligatoires (nom, identifiant, mot de passe)');
       return;
     }
+
+    const roleChoisi = this.rolesList.find(r => r.id === this.selectedRoleId);
+    if (!roleChoisi) {
+      alert('Veuillez sélectionner un rôle');
+      return;
+    }
+
+    this.userData.roles = roleChoisi;
     this.isLoading = true;
 
     this.userService.createUser(this.userData).subscribe({
-      next: (user) => {
-        console.log('Utilisateur créé :', user);
-        // Créer le profil immédiatement après l'utilisateur
-        this.createProfil(user.id);
-      },
+      next: (user) => this.createProfil(user.id, user),
       error: (err) => {
         console.error('Erreur création utilisateur', err);
         alert('Erreur lors de la création du compte utilisateur');
@@ -68,20 +89,19 @@ export class ModalEnregistrementUser {
     });
   }
 
-  createProfil(userId: string) {
-    const formData = new FormData();
-    formData.append('user_id', userId);  // ← Changé de 'user' à 'user_id'
-    if (this.profilData.adresse) formData.append('adresse', this.profilData.adresse);
-    // if (this.profilData.telephone) formData.append('telephone', this.profilData.telephone);
-    if (this.profilData.date_naissance) formData.append('date_naissance', this.profilData.date_naissance);
-    if (this.profilData.photo_profil) formData.append('photo_profil', this.profilData.photo_profil);
+  createProfil(userId: number, user: any) {
+    const profilPayload: ProfilDTO = {
+      userId: userId,
+      photoProfil: this.profilData.photoProfil || null,
+      telephone: this.profilData.telephone || '',
+      nomComplet: this.userData.fullName,
+      adresse: this.profilData.adresse || ''
+    };
 
-    this.userService.createProfil(formData).subscribe({
+    this.userService.createProfil(profilPayload).subscribe({
       next: (profil) => {
-        console.log('Profil créé :', profil);
         this.isLoading = false;
-        this.success.emit({ userId, profil });
-        // Réinitialiser le formulaire
+        this.success.emit({ userId, user, profil });
         this.resetForm();
         this.fermer.emit();
       },
@@ -95,22 +115,9 @@ export class ModalEnregistrementUser {
   }
 
   resetForm() {
-    this.userData = {
-      username: '',
-      first_name: '',
-      last_name: '',
-      phone: '',
-      email: '',
-      password: '',
-      role: 'ENQUETEUR'
-    };
-    this.profilData = {
-      adresse: '',
-      date_naissance: '',
-      photo_profil: null
-    };
+    this.userData = { fullName: '', username: '', password: '', roles: null, enable: true };
+    this.selectedRoleId = this.rolesList.length > 0 ? this.rolesList[0].id : null;
+    this.profilData = { adresse: '', telephone: '', photoProfil: null };
     this.photoPreview = null;
   }
-
- 
 }

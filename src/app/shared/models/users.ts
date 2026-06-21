@@ -1,30 +1,43 @@
-export interface Role {
-    id: number;
-    name?: string;
+export interface RoleDTO {
+  id: number;
+  publicId?: string;
+  name: 'ADMIN' | 'AGENT_ACCUEIL' | 'CLIENT' | 'CHAUFFEUR';
 }
 
-export interface User {
-    id?: number;
-    fullName: string;
-    username: string;
-    publicId: string; 
-    nom: string;   
-    password: string;
-    enable: boolean;
-    roles: Role;
+export interface UserResponse {
+  id: number;
+  publicId: string;
+  fullName: string;
+  username: string;
+  enable: boolean;
+  roles: RoleDTO;
+  createdAt?: string;
 }
 
-
-export interface Profile {
-    id?: string;
-    userId?: number;
-    photoProfil?: string;
-    telephone?: string;
-    nomComplet?: string;
-    adresse?: string;
-    creerPar: string;
-    modiferPar: string;
-    dateModification: string;
-    dateCreation: string;
+export interface UserCreateDTO {
+  fullName: string;
+  username: string;
+  password: string;
+  roles: RoleDTO | null;
+  enable?: boolean;
 }
 
+export interface UserUpdateDTO {
+  fullName: string;
+  username: string;
+  roles: RoleDTO | null;
+  enable: boolean;
+}
+
+export interface ProfilDTO {
+  id?: string;
+  userId: number;
+  photoProfil: string | null;
+  telephone: string;
+  nomComplet: string;
+  adresse: string;
+}
+
+export interface ProfilComplet extends ProfilDTO {
+  user: UserResponse;
+}

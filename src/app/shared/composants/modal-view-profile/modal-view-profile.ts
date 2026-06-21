@@ -1,6 +1,6 @@
 import { Component, Input, Output, EventEmitter } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { ProfilUtilisateur } from '../../../core/modeles/utilisateurs.model';
+import { ProfilComplet } from '../../models/users';
 
 @Component({
   selector: 'app-modal-view-profile',
@@ -9,7 +9,7 @@ import { ProfilUtilisateur } from '../../../core/modeles/utilisateurs.model';
   styleUrl: './modal-view-profile.scss',
 }) 
 export class ModalViewProfile {
-  @Input() profil: ProfilUtilisateur | null = null;
+  @Input() profil:  ProfilComplet | null = null;
   @Output() fermer = new EventEmitter<void>();
   @Input() titre: string = "Profil Utilisateur"
 

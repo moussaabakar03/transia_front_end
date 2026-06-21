@@ -3,14 +3,13 @@ import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router'; 
 import { AuthService } from '../../../core/services/auth.service'; 
 import { UserService } from '../../../core/services/user-service';
-import { ProfilUtilisateur, Utilisateur } from '../../../core/modeles/utilisateurs.model';
 import { ModalViewProfile } from "../modal-view-profile/modal-view-profile";
+import { ProfilComplet, UserResponse } from '../../models/users';
 
 
 @Component({
   selector: 'app-header',
   standalone: true,
-  // ✅ Ajout des deux modales dans les imports du composant standalone
   imports: [CommonModule, ModalViewProfile], 
   templateUrl: './header.html',
   styleUrl: './header.scss',
@@ -29,11 +28,11 @@ export class Header implements OnInit {
   userRole: string = ''; 
   userAvatar: string | null = null; 
   showDropdown: boolean = false;    
-  utilisateurConnecte: Utilisateur = {} as Utilisateur;
-  profilUtilisateurConnecte: ProfilUtilisateur = {} as ProfilUtilisateur;
+  utilisateurConnecte: UserResponse = {} as UserResponse;
+  profilUtilisateurConnecte: ProfilComplet = {} as ProfilComplet;
   
   afficherViewProfile: boolean = false;
-  profilVoir: ProfilUtilisateur | null = null;
+  profilVoir: ProfilComplet | null = null;
   titreViewProfil: string = "Mon Profil";
 
   // ── États d'affichage des modales de création ─────────────────────────────

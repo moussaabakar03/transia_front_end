@@ -1,5 +1,5 @@
 import { Paiement } from "./paiement";
-import { User } from "./users";
+import { UserResponse } from "./users";
 
 export enum StatutReservation {
   EN_ATTENTE = 'EN_ATTENTE',
@@ -22,7 +22,7 @@ export interface Reservation {
   trajetId: string;
   billets?: Billet[];
   nomResponsable?: string;   
-  user: User;
+  user: UserResponse;
   paiement: Paiement;
   typeReservation: TypeReservation;
 }

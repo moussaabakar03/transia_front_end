@@ -1,84 +1,88 @@
-import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { BehaviorSubject, Observable } from 'rxjs';
-import { ProfilUtilisateur, Utilisateur } from '../modeles/utilisateurs.model';
+import { Injectable } from '@angular/core';
+import { Observable, forkJoin, of } from 'rxjs';
+import { catchError, switchMap, map } from 'rxjs/operators';
 import { environment } from '../../../environments/environment';
+import { ProfilComplet, ProfilDTO, RoleDTO, UserCreateDTO, UserUpdateDTO, UserResponse } from '../../shared/models/users';
 
 @Injectable({ providedIn: 'root' })
 export class UserService {
-  private apiUrl = environment.baseUrl;
-  private userSubject = new BehaviorSubject<Utilisateur | null>(null);
-  user$ = this.userSubject.asObservable();
+  private baseUrl = environment.baseUrl;
 
   constructor(private http: HttpClient) {}
 
-  // Création utilisateur
-  createUser(userData: any): Observable<any> {
-    return this.http.post(`${this.apiUrl}/accounts/users/`, userData);
+  // --- Rôles ---
+  getAllRoles(): Observable<RoleDTO[]> {
+    return this.http.get<RoleDTO[]>(`${this.baseUrl}/role`);
   }
 
-  // Création profil
-  createProfil(profilData: any): Observable<any> {
-    return this.http.post(`${this.apiUrl}/accounts/profils/`, profilData);
+  // --- Utilisateurs ---
+  createUser(userData: UserCreateDTO): Observable<UserResponse> {
+    return this.http.post<UserResponse>(`${this.baseUrl}/users`, userData);
   }
 
-  // Profils par utilisateur
-  getProfilsByUser(userId: string): Observable<ProfilUtilisateur[]> {
-    return this.http.get<ProfilUtilisateur[]>(`${this.apiUrl}/accounts/profils/?user=${userId}`);
+  getUsers(): Observable<UserResponse[]> {
+    return this.http.get<UserResponse[]>(`${this.baseUrl}/users`);
   }
 
-  // Utilisateur courant (via /accounts/users/me/)
-  fetchCurrentUser(): Observable<Utilisateur> {
-    return this.http.get<Utilisateur>(`${this.apiUrl}/accounts/users/me/`);
+  getUserById(id: number): Observable<UserResponse> {
+    return this.http.get<UserResponse>(`${this.baseUrl}/users/${id}`);
   }
 
-  // Profil courant (via /accounts/profils/my_profile/)
-  getMyProfil(): Observable<ProfilUtilisateur> {
-    return this.http.get<ProfilUtilisateur>(`${this.apiUrl}/accounts/profils/my_profile/`);
+  // PUT /users/{publicId} (UUID, pas l'id numérique)
+  updateUser(publicId: string, userData: UserUpdateDTO): Observable<UserResponse> {
+    return this.http.put<UserResponse>(`${this.baseUrl}/users/${publicId}`, userData);
   }
 
-  // Getter utilisateur
-  getUser() {
-    return this.userSubject.value;
+  suspendAccount(publicId: string, current: UserUpdateDTO): Observable<any> {
+    return this.updateUser(publicId, { ...current, enable: false });
   }
 
-  // Enquêteurs actifs
-  getEnqueteursActifs(): Observable<Utilisateur[]> {
-    return this.http.get<Utilisateur[]>(`${this.apiUrl}/accounts/users/enqueteurs_actifs/`);
+  activateAccount(publicId: string, current: UserUpdateDTO): Observable<any> {
+    return this.updateUser(publicId, { ...current, enable: true });
   }
 
-  // Liste utilisateurs
-  getUsers(): Observable<Utilisateur[]> {
-    return this.http.get<Utilisateur[]>(`${this.apiUrl}/accounts/users/`);
+  deleteUser(publicId: string): Observable<void> {
+    return this.http.delete<void>(`${this.baseUrl}/users/${publicId}`);
   }
 
-  // Liste profils
-  getProfils(): Observable<ProfilUtilisateur[]> {
-    return this.http.get<ProfilUtilisateur[]>(`${this.apiUrl}/accounts/profils/`);
+  // --- Profils ---
+  getProfilByUserId(userId: number): Observable<ProfilDTO> {
+    return this.http.get<ProfilDTO>(`${this.baseUrl}/profil/${userId}`);
   }
 
-  // Suspendre compte
-  suspendAccount(userId: string): Observable<any> {
-    return this.http.post(`${this.apiUrl}/accounts/users/${userId}/suspend_account/`, {});
+  createProfil(profilData: ProfilDTO): Observable<ProfilDTO> {
+    return this.http.post<ProfilDTO>(`${this.baseUrl}/profil`, profilData);
   }
 
-  // Activer compte
-  activateAccount(userId: string): Observable<any> {
-    return this.http.post(`${this.apiUrl}/accounts/users/${userId}/activate_account/`, {});
+  updateProfil(userId: number, profilData: ProfilDTO): Observable<ProfilDTO> {
+    return this.http.put<ProfilDTO>(`${this.baseUrl}/profil/${userId}`, profilData);
   }
 
-  // Mise à jour utilisateur
-  updateUser(userId: string, userData: any): Observable<any> {
-    return this.http.patch(`${this.apiUrl}/accounts/users/${userId}/`, userData);
-  }
-
-  // Mise à jour profil
-  updateProfil(profilId: number, profilData: any): Observable<any> {
-    return this.http.patch(`${this.apiUrl}/accounts/profils/${profilId}/`, profilData);
-  }
-
-  // Suppression utilisateur
-  deleteUser(userId: string): Observable<any> {
-    return this.http.delete(`${this.apiUrl}/accounts/users/${userId}/`);
+  // --- Combinaison user + profil (remplace l'appel à /profils inexistant) ---
+  getProfilsComplets(): Observable<ProfilComplet[]> {
+    return this.getUsers().pipe(
+      switchMap(users => {
+        if (users.length === 0) return of([]);
+        const requetes = users.map(user =>
+          this.getProfilByUserId(user.id).pipe(
+            catchError(() => of(null))
+          )
+        );
+        return forkJoin(requetes).pipe(
+          map(profils => users.map((user, i) => {
+            const p = profils[i];
+            return {
+              userId: user.id,
+              photoProfil: p?.photoProfil ?? null,
+              telephone: p?.telephone ?? '',
+              nomComplet: p?.nomComplet ?? user.fullName,
+              adresse: p?.adresse ?? '',
+              user: user
+            } as ProfilComplet;
+          }))
+        );
+      })
+    );
   }
 }

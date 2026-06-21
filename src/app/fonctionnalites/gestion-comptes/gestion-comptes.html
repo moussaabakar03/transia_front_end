@@ -39,31 +39,31 @@
             </tr>
           </thead>
           <tbody>
-            @for (profil of comptesAffiches; track profil.id) {
+            @for (profil of comptesAffiches; track profil.userId) {
               <tr>
                 <td>
                   <div class="user-profile-cell">
                     <!-- <span class="material-icons avatar-icon">account_circle</span> -->
                      <!-- image ou circle avec initiales -->
-                    <img *ngIf="profil.photo_profil; else defaultAvatar" [src]="profil.photo_profil" alt="Avatar" class="user-avatar-img" style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover; margin-right: 10px;">
+                    <img *ngIf="profil.photoProfil; else defaultAvatar" [src]="profil.photoProfil" alt="Avatar" class="user-avatar-img" style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover; margin-right: 10px;">
                     <ng-template #defaultAvatar>
                       <span class="material-icons avatar-icon">account_circle</span>
                     </ng-template>
                     <div class="user-info-text">
-                      <span class="user-fullname">{{ profil.user.username }} {{ profil.user.first_name }}</span>
+                      <span class="user-fullname">{{ profil.user.username }} {{ profil.user.fullName }}</span>
                       <span class="user-id">ID: #00{{ profil.user.id }}</span>
                     </div>
                   </div>
                 </td>
-                <td><span class="email-text">{{ profil.user.email }}</span></td>
+                <td><span class="email-text">{{ profil.user.username }}</span></td>
                 <td>
-                  <span class="role-badge" [ngClass]="profil.user.role.toLowerCase() === 'administrateur' ? 'admin' : 'enqueteur'">
-                    {{ profil.user.role }}
+                  <span class="role-badge" [ngClass]="profil.user.roles.name === 'ADMIN' ? 'ADMIN' : 'AGENT_ACCUEIL'">
+                    {{ profil.user.roles.name }}
                   </span>
                 </td>
                 <td>
-                  <span class="status-user-badge" [ngClass]="profil.user.is_active ? 'active' : 'inactive'">
-                    {{ profil.user.is_active ? 'Actif' : 'Inactif' }}
+                  <span class="status-user-badge" [ngClass]="profil.user.enable ? 'active' : 'inactive'">
+                    {{ profil.user.enable ? 'Actif' : 'Inactif' }}
                   </span>
                 </td>
 
@@ -71,12 +71,12 @@
                 <td class="text-center actions-cell flex">
                   <div class="table-actions-group actions-comptes flex">
                     <!-- Bouton suspend/activate -->
-                    @if (profil.user.is_active) {
-                      <button class="btn-table-action delete" (click)="suspendreCompte(profil.user.id)" title="Suspendre ou révoquer les accès">
+                    @if (profil.user.enable) {
+                      <button class="btn-table-action delete" (click)="suspendreCompte(profil.user.publicId)" title="Suspendre ou révoquer les accès">
                         <span class="material-icons">person_remove</span>
                       </button>
                     } @else {
-                      <button class="btn-table-action activate" (click)="activerCompte(profil.user.id)" title="Réactiver le compte">
+                      <button class="btn-table-action activate" (click)="activerCompte(profil.user.publicId)" title="Réactiver le compte">
                         <span class="material-icons">person_add</span>
                       </button>
                     }
@@ -92,7 +92,7 @@
                     </button>
                   </div>
                   <div class="table-actions-group actions-comptes flex">
-                    <button class="btn-table-action delete" (click)="ouvrirDeleteCompte(profil.user.id, profil.user.username)" title="Supprimer le compte">
+                    <button class="btn-table-action delete" (click)="ouvrirDeleteCompte(profil.user.publicId, profil.user.username)" title="Supprimer le compte">
                       <span class="material-icons">delete</span>
                     </button>
                   </div>

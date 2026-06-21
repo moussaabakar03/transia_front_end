@@ -12,11 +12,11 @@ import { AuthService } from '../../../core/services/auth.service';
   styleUrl: './login.scss'
 })
 export class Login implements OnInit {
-  // ── Splash screen ────────────────────────────────────────────────────────
+  //  Splash screen 
   splashVisible = true;
   splashFading = false;
 
-  // ── Formulaire ───────────────────────────────────────────────────────────
+  //  Formulaire ─
   username = '';
   password = '';
   isLoading = false;
@@ -49,6 +49,7 @@ export class Login implements OnInit {
     this.passwordVisible = !this.passwordVisible;
   }
 
+
   seConnecter(): void {
     if (!this.username.trim() || !this.password.trim()) {
       this.erreur = 'Veuillez remplir tous les champs.';
@@ -60,16 +61,28 @@ export class Login implements OnInit {
 
     this.authService.login({ username: this.username.trim(), password: this.password }).subscribe({
       next: (response: any) => {
-        console.log('📦 Réponse complète :', JSON.stringify(response));
+        // console.log('Réponse complète :', JSON.stringify(response));
         
-        // Extraction sécurisée du rôle par rapport à tes Enums Spring Boot
-        // 💥 Remplace l'ancien bloc de détection du rôle par celui-ci :
+        // Extraction du rôle principal
         const role = (response?.roles && response.roles.length > 0) 
           ? response.roles[0] 
           : (this.authService.getRole() || 'CLIENT');
 
-        console.log(`🔑 Rôle détecté : ${role}`, response);
+        console.log(`Rôle détecté : ${role}`, response);
 
+        // CONDITION DE SÉCURITÉ TRANSIA : Seuls ADMIN et AGENT_ACCUEIL se connectent au back-office
+        if (role !== 'ROLE_ADMIN' && role !== 'ROLE_AGENT_ACCUEIL' && role !== 'ADMIN' && role !== 'AGENT_ACCUEIL') {
+          // console.warn(`Accès refusé pour le rôle : ${role}`);
+          
+          // Nettoyage immédiat du localStorage pour invalider le jeton erroné stocké par le service
+          this.authService.logout(); 
+          
+          this.erreur = "Accès refusé !";
+          this.isLoading = false;
+          return;
+        }
+
+        // Si le rôle est valide, on poursuit la redirection normale
         if (this.urlRetour) {
           this.router.navigateByUrl(this.urlRetour);
           this.isLoading = false;
@@ -78,7 +91,6 @@ export class Login implements OnInit {
 
         this.router.navigate(['/tableau-de-bord']);
         this.isLoading = false;
-
       },
       error: (err: any) => {
         console.error('Erreur de connexion :', err);
@@ -87,4 +99,7 @@ export class Login implements OnInit {
       }
     });
   }
+
+
+
 }

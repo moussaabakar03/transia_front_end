@@ -4,11 +4,11 @@ import { FormsModule } from '@angular/forms';
 import { Sidebar } from '../../shared/composants/sidebar/sidebar';
 import { Header } from '../../shared/composants/header/header';
 import { UserService } from '../../core/services/user-service';
-import { ProfilUtilisateur, Utilisateur } from '../../core/modeles/utilisateurs.model';
 import { ModalEnregistrementUser } from '../../shared/composants/modal-enregistrement-user/modal-enregistrement-user';
 import { ModalEditUser } from '../../shared/composants/modal-edit-user/modal-edit-user';
 import { ModalDeleteUser } from '../../shared/composants/modal-delete-user/modal-delete-user';
 import { ModalViewProfile } from '../../shared/composants/modal-view-profile/modal-view-profile';
+import { ProfilComplet } from '../../shared/models/users';
 
 @Component({
   selector: 'app-gestion-comptes',
@@ -18,8 +18,8 @@ import { ModalViewProfile } from '../../shared/composants/modal-view-profile/mod
   styleUrl: './gestion-comptes.scss'
 })
 export class GestionComptes implements OnInit {
-  // Affichage paginé
-  comptesAffiches: ProfilUtilisateur[] = [];
+  // Affichage paginé - maintenant un tableau
+  comptesAffiches: ProfilComplet[] = [];
 
   // États des modales
   afficherChoixGlobal: boolean = false;
@@ -29,23 +29,23 @@ export class GestionComptes implements OnInit {
   afficherViewProfile: boolean = false;
 
   // Données éditées/supprimées
-  profilEditer: ProfilUtilisateur | null = null;
-  profilVoir: ProfilUtilisateur | null = null;
-  userIdDelete: any = null;
+  profilEditer: ProfilComplet | null = null;
+  profilVoir: ProfilComplet | null = null;
+  userIdDelete: string | null = null;
   userNameDelete: string = '';
   titreViewProfil: string = "Profil Utilisateur";
 
   // Pagination
   pageActuelle: number = 1;
-  readonly parPage: number = 5;          // Nombre d'éléments par page
-  totalComptes: number = 0;              // Total après filtre
+  readonly parPage: number = 5;
+  totalComptes: number = 0;
 
   // Recherche
   valeurSaisi: string = '';
 
   // Sources de données
-  tousLesProfils: ProfilUtilisateur[] = [];     // Tous les profils depuis le backend
-  resultatsFiltres: ProfilUtilisateur[] = [];   // Résultats après application du filtre (avant pagination)
+  tousLesProfils: ProfilComplet[] = [];
+  resultatsFiltres: ProfilComplet[] = [];
 
   constructor(private utilisateursService: UserService) {}
 
@@ -53,12 +53,12 @@ export class GestionComptes implements OnInit {
     this.loadUsers();
   }
 
-  // Chargement initial depuis l'API
   loadUsers(): void {
-    this.utilisateursService.getProfils().subscribe({
+    this.utilisateursService.getProfilsComplets().subscribe({
       next: (data) => {
         this.tousLesProfils = data;
         this.resultatsFiltres = [...data];
+        console.log(this.resultatsFiltres);
         this.totalComptes = this.resultatsFiltres.length;
         this.pageActuelle = 1;
         this.appliquerPage();
@@ -67,7 +67,6 @@ export class GestionComptes implements OnInit {
     });
   }
 
-  // Filtrage en temps réel
   filtrerProfils(): void {
     if (!this.valeurSaisi.trim()) {
       this.resultatsFiltres = [...this.tousLesProfils];
@@ -75,29 +74,26 @@ export class GestionComptes implements OnInit {
       const terme = this.valeurSaisi.toLowerCase().trim();
       this.resultatsFiltres = this.tousLesProfils.filter(profil =>
         profil.user.username?.toLowerCase().includes(terme) ||
-        profil.user.email?.toLowerCase().includes(terme) ||
+        profil.user.fullName?.toLowerCase().includes(terme) ||
         profil.adresse?.toLowerCase().includes(terme) ||
-        profil.user.phone?.includes(terme) ||
-        profil.user.role?.toLowerCase().includes(terme)
+        profil.telephone?.includes(terme) ||
+        profil.user.roles.name?.toLowerCase().includes(terme)
       );
     }
     this.totalComptes = this.resultatsFiltres.length;
-    this.pageActuelle = 1;   // Retour à la première page après filtrage
+    this.pageActuelle = 1;
     this.appliquerPage();
   }
 
-  // Appliquer la pagination sur les résultats filtrés
   private appliquerPage(): void {
     const debut = (this.pageActuelle - 1) * this.parPage;
     this.comptesAffiches = this.resultatsFiltres.slice(debut, debut + this.parPage);
   }
 
-  // Calcul du nombre total de pages
   get totalPages(): number {
     return Math.ceil(this.totalComptes / this.parPage);
   }
 
-  // Navigation
   pagePrecedente(): void {
     if (this.pageActuelle > 1) {
       this.pageActuelle--;
@@ -117,19 +113,21 @@ export class GestionComptes implements OnInit {
     this.appliquerPage();
   }
 
-  // Gestion des actions utilisateur
-  suspendreCompte(userId: string): void {
-    const profil = this.tousLesProfils.find(p => p.user.id === userId);
-    if (!profil) {
-      console.error('Utilisateur non trouvé');
-      return;
-    }
+  suspendreCompte(publicId: string): void {
+    const profil = this.tousLesProfils.find(p => p.user.publicId === publicId);
+    if (!profil) return;
 
     if (confirm(`Voulez-vous suspendre temporairement les accès de ${profil.user.username}?`)) {
-      this.utilisateursService.suspendAccount(userId).subscribe({
+      const payload = {
+        fullName: profil.user.fullName,
+        username: profil.user.username,
+        roles: profil.user.roles,
+        enable: false
+      };
+      this.utilisateursService.updateUser(publicId, payload).subscribe({
         next: () => {
           alert(`Les droits d'accès de ${profil.user.username} ont été révoqués.`);
-          this.loadUsers();  // recharge tout et réinitialise pagination/filtre
+          this.loadUsers();
         },
         error: (err) => {
           console.error('Erreur suspension compte', err);
@@ -139,14 +137,17 @@ export class GestionComptes implements OnInit {
     }
   }
 
-  activerCompte(userId: string): void {
-    const profil = this.tousLesProfils.find(p => p.user.id === userId);
-    if (!profil) {
-      console.error('Utilisateur non trouvé');
-      return;
-    }
+  activerCompte(publicId: string): void {
+    const profil = this.tousLesProfils.find(p => p.user.publicId === publicId);
+    if (!profil) return;
 
-    this.utilisateursService.activateAccount(userId).subscribe({
+    const payload = {
+      fullName: profil.user.fullName,
+      username: profil.user.username,
+      roles: profil.user.roles,
+      enable: true
+    };
+    this.utilisateursService.updateUser(publicId, payload).subscribe({
       next: () => {
         alert(`Le compte de ${profil.user.username} a été réactivé.`);
         this.loadUsers();
@@ -158,7 +159,6 @@ export class GestionComptes implements OnInit {
     });
   }
 
-  // Modales
   ouvrirSelectionGlobale(): void {
     this.afficherChoixGlobal = true;
   }
@@ -177,7 +177,7 @@ export class GestionComptes implements OnInit {
     this.loadUsers();
   }
 
-  ouvrirEditCompte(profil: ProfilUtilisateur): void {
+  ouvrirEditCompte(profil: ProfilComplet): void {
     this.profilEditer = profil;
     this.afficherEditCompte = true;
   }
@@ -193,7 +193,7 @@ export class GestionComptes implements OnInit {
     this.loadUsers();
   }
 
-  ouvrirViewProfile(profil: ProfilUtilisateur): void {
+  ouvrirViewProfile(profil: ProfilComplet): void {
     this.profilVoir = profil;
     this.afficherViewProfile = true;
   }
@@ -203,8 +203,8 @@ export class GestionComptes implements OnInit {
     this.profilVoir = null;
   }
 
-  ouvrirDeleteCompte(userId: any, userName: string): void {
-    this.userIdDelete = userId;
+  ouvrirDeleteCompte(publicId: string, userName: string): void {
+    this.userIdDelete = publicId;
     this.userNameDelete = userName;
     this.afficherDeleteCompte = true;
   }

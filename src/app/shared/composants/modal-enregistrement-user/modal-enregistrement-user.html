@@ -1,7 +1,3 @@
-<!-- modale-creation-compte.html
-<div class="modal-overlay" (click)="fermer.emit()">
-  <div class="modal-card" (click)="$event.stopPropagation()">
-     -->
 <div class="modal-overlay">
   <div class="modal-card">
     <div class="modal-header">
@@ -12,59 +8,42 @@
     </div>
 
     <div class="modal-body">
-      <!-- Informations de connexion -->
       <div class="form-section">
         <h3>Identifiants</h3>
         <div class="input-group">
-          <label>Nom d'utilisateur *</label>
-          <input type="text" [(ngModel)]="userData.username">
+          <label>Nom complet *</label>
+          <input type="text" [(ngModel)]="userData.fullName" [disabled]="isLoading">
         </div>
         <div class="input-group">
-          <label>Email *</label>
-          <input type="email" [(ngModel)]="userData.email">
+          <label>Nom d'utilisateur *</label>
+          <input type="text" [(ngModel)]="userData.username" [disabled]="isLoading">
         </div>
         <div class="input-group">
           <label>Mot de passe *</label>
-          <input type="password" [(ngModel)]="userData.password">
+          <input type="password" [(ngModel)]="userData.password" [disabled]="isLoading">
         </div>
         <div class="input-group">
           <label>Rôle</label>
-          <select [(ngModel)]="userData.role">
-            <option value="SUPER_ADMIN">Super Administrateur</option>
-            <option value="ADMIN">Administrateur</option>
-            <option value="MANAGER">Gestionnaire</option>
-            <option value="ENQUETEUR">Enquêteur</option>
+          <select [(ngModel)]="selectedRoleId" [disabled]="isLoading || isLoadingRoles">
+            <option *ngIf="isLoadingRoles" [ngValue]="null">Chargement...</option>
+            <option *ngFor="let role of rolesList" [ngValue]="role.id">{{ role.name }}</option>
           </select>
         </div>
       </div>
 
-      <!-- Profil -->
       <div class="form-section">
         <h3>Profil (optionnel)</h3>
-
         <div class="input-group">
-          <label>Nom</label>
-          <input type="text" [(ngModel)]="userData.first_name"/>
-        </div>
-        <div class="input-group">
-          <label>Prenom</label>
-          <input type="text" [(ngModel)]="userData.last_name"/>
+          <label>Téléphone</label>
+          <input type="tel" [(ngModel)]="profilData.telephone" [disabled]="isLoading">
         </div>
         <div class="input-group">
           <label>Adresse</label>
-          <input type="text" [(ngModel)]="profilData.adresse">
-        </div>
-        <div class="input-group">
-          <label>Téléphone</label>
-          <input type="tel" [(ngModel)]="userData.phone">
-        </div>
-        <div class="input-group">
-          <label>Date de naissance</label>
-          <input type="date" [(ngModel)]="profilData.date_naissance">
+          <input type="text" [(ngModel)]="profilData.adresse" [disabled]="isLoading">
         </div>
         <div class="input-group">
           <label>Photo de profil</label>
-          <input type="file" accept="image/*" (change)="onFileSelected($event)">
+          <input type="file" accept="image/*" (change)="onFileSelected($event)" [disabled]="isLoading">
           <div *ngIf="photoPreview" class="photo-preview">
             <img [src]="photoPreview" width="80">
           </div>
@@ -73,7 +52,7 @@
     </div>
 
     <div class="modal-footer">
-      <button class="btn-cancel" (click)="fermer.emit()">ANNULER</button>
+      <button class="btn-cancel" (click)="fermer.emit()" [disabled]="isLoading">ANNULER</button>
       <button class="btn-submit" [disabled]="isLoading" (click)="submit()">
         {{ isLoading ? 'ENREGISTREMENT...' : 'CRÉER LE COMPTE' }}
       </button>

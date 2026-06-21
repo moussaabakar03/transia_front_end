@@ -1,12 +1,12 @@
 @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600;700&family=DM+Sans:wght@300;400;500;600&display=swap');
 
-// ── Variables ────────────────────────────────────────────────────────────────
-$gold: #8B7313;
-$gold-light: #C9A84C;
+//  Variables 
+$gold: #1e293b;
+$gold-light: #bad3fa;
 $gold-pale: #F5EFD6;
-$gold-dark: #5C4D0A;
-$dark: #0F0E0B;
-$dark-2: #1A1810;
+$gold-dark: #0a439f;
+$dark: #1e293b;
+$dark-2: #101215;
 $surface: #FAFAF7;
 $text: #1A1A1A;
 $text-muted: #888;
@@ -14,7 +14,6 @@ $red: #C0392B;
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
-// ══ SPLASH SCREEN ════════════════════════════════════════════════════════════
 .splash-screen {
   position: fixed;
   inset: 0;
@@ -172,7 +171,7 @@ $red: #C0392B;
 
 @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 
-// ── Panneau gauche ────────────────────────────────────────────────────────────
+//  Panneau gauche 
 .login-left {
   flex: 0 0 42%;
   background: $dark;
@@ -276,7 +275,7 @@ $red: #C0392B;
   &.c3 { width: 90px;  height: 90px;  bottom: 20px;  right: 20px;  border-color: rgba($gold, 0.35); }
 }
 
-// ── Panneau droit (formulaire) ─────────────────────────────────────────────
+//  Panneau droit (formulaire) ─
 .login-right {
   flex: 1;
   background: $surface;
@@ -433,7 +432,7 @@ $red: #C0392B;
   line-height: 1.5;
 }
 
-// ── Utilitaires ───────────────────────────────────────────────────────────────
+//  Utilitaires ─
 .spin {
   animation: spin 1s linear infinite;
 }

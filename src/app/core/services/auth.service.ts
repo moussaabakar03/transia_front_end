@@ -2,11 +2,12 @@ import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable, tap, throwError } from 'rxjs';
 import { catchError } from 'rxjs/operators';
+import { environment } from '../../../environments/environment';
 
 @Injectable({ providedIn: 'root' })
 export class AuthService {
   private http = inject(HttpClient);
-  private apiUrl = 'http://localhost:8181/api/v1'; 
+  private apiUrl = environment.baseUrl
 
   login(credentials: { username: string; password: string }): Observable<any> {
     return this.http.post<any>(`${this.apiUrl}/login`, credentials).pipe(
@@ -39,31 +40,6 @@ export class AuthService {
     );
   }
 
-  
-  // login(credentials: { username: string; password: string }): Observable<any> {
-  //   return this.http.post<any>(`${this.apiUrl}/login`, credentials).pipe(
-  //     tap(response => {
-  //       if (response?.access) {
-  //         localStorage.setItem('transia_token', response.access);
-  //         localStorage.setItem('transia_refresh', response.refresh);
-          
-  //         // Récupération sécurisée du rôle depuis le backend
-  //         const roleName = response.role?.name || response.role || 'CLIENT';
-          
-  //         const userProfile = {
-  //           id: response.id || '',
-  //           username: response.username || credentials.username,
-  //           nom: response.nom || '',
-  //           prenom: response.prenom || '',
-  //           role: roleName
-  //         };
-          
-  //         localStorage.setItem('transia_user', JSON.stringify(userProfile));
-  //         localStorage.setItem('userRole', roleName);
-  //       }
-  //     })
-  //   );
-  // }
 
   rafraichirToken(): Observable<any> {
     const refresh = localStorage.getItem('transia_refresh');
