@@ -56,6 +56,22 @@
       <span>RÉSERVATION</span>
     </a>
 
+    <!-- Séparateur -->
+    <div class="menu-separator"></div>
+
+    <!--  GESTION DES COLIS & TOURNÉES  -->
+    <a routerLink="/colis" routerLinkActive="active" class="menu-link" (click)="close()">
+      <i class="material-icons">inventory_2</i>
+      <span>GESTION DES COLIS</span>
+    </a>
+    <a routerLink="/tournees" routerLinkActive="active" class="menu-link" (click)="close()">
+      <i class="material-icons">local_shipping</i>
+      <span>GESTION DES TOURNÉES</span>
+    </a>
+
+    <!-- Séparateur -->
+    <div class="menu-separator"></div>
+
     <!--  UTILISATEURS & FEEDBACKS  -->
     <a routerLink="/gestion-comptes" routerLinkActive="active" class="menu-link" (click)="close()">
       <i class="material-icons">group</i>

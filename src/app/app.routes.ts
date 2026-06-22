@@ -10,6 +10,8 @@ import { Vehicules } from './fonctionnalites/transport/vehicules/vehicules';
 import { Trajets } from './fonctionnalites/transport/trajets/trajets';
 import { Reservations } from './fonctionnalites/reservations/reservations';
 import { Feedbacks } from './fonctionnalites/feedbacks/feedbacks';
+import { ColisComponent } from './fonctionnalites/colis/colis';
+import { TourneesComponent } from './fonctionnalites/tournees/tournees';
 
 export const routes: Routes = [
   { path: '', redirectTo: 'login', pathMatch: 'full' },
@@ -28,6 +30,10 @@ export const routes: Routes = [
 
   // Réservations
   { path: 'reservations',          component: Reservations,       canActivate: [authGuard] },
+
+  // Gestion des colis et tournées
+  { path: 'colis',                 component: ColisComponent,     canActivate: [authGuard] },
+  { path: 'tournees',              component: TourneesComponent,  canActivate: [authGuard] },
 
   // Feedbacks
   { path: 'feedbacks',             component: Feedbacks,          canActivate: [authGuard] },

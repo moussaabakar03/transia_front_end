@@ -1,0 +1,274 @@
+<app-header></app-header>
+<app-sidebar></app-sidebar>
+
+<div class="main-content">
+  <div class="page-header">
+    <h1>Gestion des Colis</h1>
+    <button class="btn btn-primary" (click)="openModal(ModalMode.AJOUT)">
+      <i class="icon-plus"></i> Nouveau Colis
+    </button>
+  </div>
+
+  <!-- Filters -->
+  <div class="filters">
+    <div class="filter-group">
+      <input 
+        type="text" 
+        class="form-control" 
+        placeholder="Rechercher par nom, numéro de suivi, adresse..." 
+        [(ngModel)]="searchTerm" 
+        (input)="applyFilters()"
+      >
+    </div>
+    <div class="filter-group">
+      <select class="form-control" [(ngModel)]="selectedStatut" (change)="applyFilters()">
+        <option value="">Tous les statuts</option>
+        <option *ngFor="let statut of statutOptions" [value]="statut">
+          {{ getStatutLabel(statut) }}
+        </option>
+      </select>
+    </div>
+    <div class="filter-group">
+      <select class="form-control" [(ngModel)]="selectedLivreur" (change)="applyFilters()">
+        <option value="">Tous les livreurs</option>
+        <option *ngFor="let livreur of livreurs" [value]="livreur.id">
+          {{ livreur.fullName }}
+        </option>
+      </select>
+    </div>
+  </div>
+
+  <!-- Loading -->
+  <div *ngIf="isLoading" class="loading">
+    <div class="spinner"></div>
+    <p>Chargement des colis...</p>
+  </div>
+
+  <!-- Error -->
+  <div *ngIf="errorMessage" class="alert alert-error">
+    {{ errorMessage }}
+  </div>
+
+  <!-- Table -->
+  <div *ngIf="!isLoading && !errorMessage" class="table-container">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Numéro de suivi</th>
+          <th>Destinataire</th>
+          <th>Adresse</th>
+          <th>Statut</th>
+          <th>Mode de dépôt</th>
+          <th>Livreur</th>
+          <th>Poids (kg)</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let colis of paginatedColis">
+          <td><strong>{{ colis.numeroSuivi }}</strong></td>
+          <td>{{ colis.nomDestinataire }}</td>
+          <td>{{ colis.adresseDestinataire }}</td>
+          <td>
+            <span class="status-badge {{ getStatutClass(colis.statut) }}">
+              {{ getStatutLabel(colis.statut) }}
+            </span>
+          </td>
+          <td>{{ getModeDepotLabel(colis.modeDepot) }}</td>
+          <td>
+            <span *ngIf="colis.livreur">{{ colis.livreur.fullName }}</span>
+            <span *ngIf="!colis.livreur" class="text-muted">Non assigné</span>
+          </td>
+          <td>{{ colis.poids }}</td>
+          <td class="actions">
+            <button class="btn btn-sm btn-info" title="Voir détails" (click)="openModal(ModalMode.VISUALISATION, colis)">
+              <i class="icon-eye"></i>
+            </button>
+            <button class="btn btn-sm btn-warning" title="Modifier" (click)="openModal(ModalMode.MODIFICATION, colis)">
+              <i class="icon-edit"></i>
+            </button>
+            <button *ngIf="!colis.livreur && colis.statut === StatutColis.EN_ATTENTE_COLLECTE" 
+                    class="btn btn-sm btn-success" 
+                    title="Assigner livreur"
+                    (click)="assignerLivreurWithId(colis.id!, selectedLivreur || getDefaultLivreurId())">
+              <i class="icon-user-plus"></i>
+            </button>
+            <button *ngIf="colis.livreur && colis.statut === StatutColis.PRIS_EN_CHARGE" 
+                    class="btn btn-sm btn-primary" 
+                    title="Marquer collecté"
+                    (click)="collecter(colis.id!)">
+              <i class="icon-check"></i>
+            </button>
+            <button *ngIf="colis.livreur && (colis.statut === StatutColis.COLLECTE_EFFECTUEE || colis.statut === StatutColis.EN_COURS)" 
+                    class="btn btn-sm btn-success" 
+                    title="Marquer livré"
+                    (click)="livrer(colis.id!)">
+              <i class="icon-truck"></i>
+            </button>
+            <button *ngIf="colis.statut !== StatutColis.LIVRE" 
+                    class="btn btn-sm btn-danger" 
+                    title="Annuler"
+                    (click)="annuler(colis.id!)">
+              <i class="icon-x"></i>
+            </button>
+          </td>
+        </tr>
+        <tr *ngIf="paginatedColis.length === 0">
+          <td colspan="8" class="text-center">Aucun colis trouvé</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <!-- Pagination -->
+    <div *ngIf="totalPages > 1" class="pagination">
+      <button class="btn btn-sm" (click)="changePage(currentPage - 1)" [disabled]="currentPage === 1">
+        Précédent
+      </button>
+      <span class="page-info">Page {{ currentPage }} / {{ totalPages }}</span>
+      <button class="btn btn-sm" (click)="changePage(currentPage + 1)" [disabled]="currentPage === totalPages">
+        Suivant
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal -->
+<div *ngIf="isModalOpen" class="modal-overlay" (click)="closeModal()">
+  <div class="modal" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <h2 *ngIf="modalMode === ModalMode.AJOUT">Nouveau Colis</h2>
+      <h2 *ngIf="modalMode === ModalMode.MODIFICATION">Modifier Colis</h2>
+      <h2 *ngIf="modalMode === ModalMode.VISUALISATION">Détails du Colis</h2>
+      <button class="btn-close" (click)="closeModal()">&times;</button>
+    </div>
+
+    <div class="modal-body">
+      <div *ngIf="formError" class="alert alert-error">{{ formError }}</div>
+      <div *ngIf="formSuccess" class="alert alert-success">{{ formSuccess }}</div>
+
+      <form *ngIf="modalMode !== ModalMode.VISUALISATION" (ngSubmit)="submitForm()">
+        <div class="form-row">
+          <div class="form-group">
+            <label>Nom du destinataire *</label>
+            <input type="text" class="form-control" [(ngModel)]="form.nomDestinataire" name="nomDestinataire">
+            <span *ngIf="formErrors.nomDestinataire" class="error">{{ formErrors.nomDestinataire }}</span>
+          </div>
+          <div class="form-group">
+            <label>Téléphone du destinataire *</label>
+            <input type="tel" class="form-control" [(ngModel)]="form.telephoneDestinataire" name="telephoneDestinataire">
+            <span *ngIf="formErrors.telephoneDestinataire" class="error">{{ formErrors.telephoneDestinataire }}</span>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>Adresse du destinataire *</label>
+          <input type="text" class="form-control" [(ngModel)]="form.adresseDestinataire" name="adresseDestinataire">
+          <span *ngIf="formErrors.adresseDestinataire" class="error">{{ formErrors.adresseDestinataire }}</span>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label>Poids (kg) *</label>
+            <input type="number" class="form-control" [(ngModel)]="form.poids" name="poids" step="0.1">
+            <span *ngIf="formErrors.poids" class="error">{{ formErrors.poids }}</span>
+          </div>
+          <div class="form-group">
+            <label>Mode de dépôt *</label>
+            <select class="form-control" [(ngModel)]="form.modeDepot" name="modeDepot">
+              <option *ngFor="let mode of modeDepotOptions" [value]="mode">
+                {{ getModeDepotLabel(mode) }}
+              </option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label>Longueur (cm) *</label>
+            <input type="number" class="form-control" [(ngModel)]="form.longueur" name="longueur" step="0.1">
+            <span *ngIf="formErrors.longueur" class="error">{{ formErrors.longueur }}</span>
+          </div>
+          <div class="form-group">
+            <label>Largeur (cm) *</label>
+            <input type="number" class="form-control" [(ngModel)]="form.largeur" name="largeur" step="0.1">
+            <span *ngIf="formErrors.largeur" class="error">{{ formErrors.largeur }}</span>
+          </div>
+          <div class="form-group">
+            <label>Hauteur (cm) *</label>
+            <input type="number" class="form-control" [(ngModel)]="form.hauteur" name="hauteur" step="0.1">
+            <span *ngIf="formErrors.hauteur" class="error">{{ formErrors.hauteur }}</span>
+          </div>
+        </div>
+
+        <!-- Champs pour enlèvement à domicile -->
+        <div *ngIf="form.modeDepot === ModeDepot.ENLEVEMENT_DOMICILE">
+          <h3>Informations de collecte</h3>
+          <div class="form-group">
+            <label>Adresse de collecte *</label>
+            <input type="text" class="form-control" [(ngModel)]="form.adresseCollecte" name="adresseCollecte">
+          </div>
+          <div class="form-group">
+            <label>Téléphone de collecte *</label>
+            <input type="tel" class="form-control" [(ngModel)]="form.telephoneCollecte" name="telephoneCollecte">
+          </div>
+          <div class="form-group">
+            <label>Date et heure de collecte souhaitée</label>
+            <input type="datetime-local" class="form-control" [(ngModel)]="form.dateHeureCollecteSouhaitee" name="dateHeureCollecteSouhaitee">
+          </div>
+        </div>
+
+        <!-- Coordonnées GPS -->
+        <h3>Coordonnées GPS (optionnel)</h3>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Latitude destinataire</label>
+            <input type="number" class="form-control" [(ngModel)]="form.latitudeDestinataire" name="latitudeDestinataire" step="any">
+          </div>
+          <div class="form-group">
+            <label>Longitude destinataire</label>
+            <input type="number" class="form-control" [(ngModel)]="form.longitudeDestinataire" name="longitudeDestinataire" step="any">
+          </div>
+        </div>
+        <div class="form-row" *ngIf="form.modeDepot === ModeDepot.ENLEVEMENT_DOMICILE">
+          <div class="form-group">
+            <label>Latitude collecte</label>
+            <input type="number" class="form-control" [(ngModel)]="form.latitudeCollecte" name="latitudeCollecte" step="any">
+          </div>
+          <div class="form-group">
+            <label>Longitude collecte</label>
+            <input type="number" class="form-control" [(ngModel)]="form.longitudeCollecte" name="longitudeCollecte" step="any">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>Remarques</label>
+          <textarea class="form-control" [(ngModel)]="form.remarques" name="remarques" rows="3"></textarea>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" (click)="closeModal()">Annuler</button>
+          <button type="submit" class="btn btn-primary" [disabled]="isSubmitting">
+            {{ isSubmitting ? 'En cours...' : (modalMode === ModalMode.AJOUT ? 'Créer' : 'Mettre à jour') }}
+          </button>
+        </div>
+      </form>
+
+      <!-- Visualisation mode -->
+      <div *ngIf="modalMode === ModalMode.VISUALISATION">
+        <div class="details-view">
+          <p><strong>Numéro de suivi:</strong> {{ editingId }}</p>
+          <p><strong>Destinataire:</strong> {{ form.nomDestinataire }}</p>
+          <p><strong>Adresse:</strong> {{ form.adresseDestinataire }}</p>
+          <p><strong>Téléphone:</strong> {{ form.telephoneDestinataire }}</p>
+          <p><strong>Poids:</strong> {{ form.poids }} kg</p>
+          <p><strong>Dimensions:</strong> {{ form.longueur }} x {{ form.largeur }} x {{ form.hauteur }} cm</p>
+          <p><strong>Mode de dépôt:</strong> {{ getModeDepotLabel(form.modeDepot) }}</p>
+          <p *ngIf="form.remarques"><strong>Remarques:</strong> {{ form.remarques }}</p>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-secondary" (click)="closeModal()">Fermer</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
