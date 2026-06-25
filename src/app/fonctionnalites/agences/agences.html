@@ -1,0 +1,114 @@
+<div class="dashboard-layout">
+  <app-sidebar></app-sidebar>
+
+  <div class="main-content-area">
+    <app-header (actionCreer)="ouvrirCreation()"></app-header>
+    
+    <div class="page-body">
+
+      <div class="page-container">
+
+        <div class="page-header">
+          <h2>Gestion des Agences</h2>
+          <button class="btn-primary" (click)="openCreate()">
+            <i class="material-icons">add</i> Nouvelle agence
+          </button>
+        </div>
+
+        <!-- Formulaire création / édition -->
+        <div class="form-card" *ngIf="showForm">
+          <h3>{{ editMode ? 'Modifier l\'agence' : 'Créer une agence' }}</h3>
+          <form (ngSubmit)="save()">
+
+            <div class="form-grid">
+              <div class="form-group">
+                <label>Nom de l'agence *</label>
+                <input type="text" [(ngModel)]="form.nom" name="nom" required placeholder="Ex: Agence Transia Lomé" />
+              </div>
+
+              <div class="form-group">
+                <label>Ville *</label>
+                <select [(ngModel)]="form.villeId" name="villeId" required>
+                  <option value="">-- Choisir une ville --</option>
+                  <option *ngFor="let v of villes" [value]="v.id">{{ v.nomVille }}</option>
+                </select>
+              </div>
+
+              <div class="form-group">
+                <label>Adresse</label>
+                <input type="text" [(ngModel)]="form.adresse" name="adresse" placeholder="Ex: Rue du Commerce, Quartier Administratif" />
+              </div>
+
+              <div class="form-group">
+                <label>Téléphone</label>
+                <input type="text" [(ngModel)]="form.telephone" name="telephone" placeholder="+228 XX XX XX XX" />
+              </div>
+
+              <div class="form-group">
+                <label>Email</label>
+                <input type="email" [(ngModel)]="form.email" name="email" placeholder="agence@transia.com" />
+              </div>
+
+              <div class="form-group">
+                <label>Latitude</label>
+                <input type="number" [(ngModel)]="form.latitude" name="latitude" step="0.000001" placeholder="Ex: 6.1375" />
+              </div>
+
+              <div class="form-group">
+                <label>Longitude</label>
+                <input type="number" [(ngModel)]="form.longitude" name="longitude" step="0.000001" placeholder="Ex: 1.2123" />
+              </div>
+            </div>
+
+            <div class="form-actions">
+              <button type="submit" class="btn-primary">{{ editMode ? 'Enregistrer' : 'Créer' }}</button>
+              <button type="button" class="btn-secondary" (click)="cancel()">Annuler</button>
+            </div>
+          </form>
+        </div>
+
+        <!-- Liste des agences -->
+        <div class="table-card">
+          <table>
+            <thead>
+              <tr>
+                <th>Nom</th>
+                <th>Ville</th>
+                <th>Adresse</th>
+                <th>Téléphone</th>
+                <th>GPS</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let a of agences">
+                <td>{{ a.nom }}</td>
+                <td>{{ a.villeNom }}</td>
+                <td>{{ a.adresse || '-' }}</td>
+                <td>{{ a.telephone || '-' }}</td>
+                <td>
+                  <span *ngIf="a.latitude && a.longitude" class="gps-badge">
+                    {{ a.latitude | number:'1.4-4' }}, {{ a.longitude | number:'1.4-4' }}
+                  </span>
+                  <span *ngIf="!a.latitude || !a.longitude" class="text-muted">—</span>
+                </td>
+                <td class="actions">
+                  <button class="btn-icon edit" (click)="openEdit(a)" title="Modifier">
+                    <i class="material-icons">edit</i>
+                  </button>
+                  <button class="btn-icon delete" (click)="delete(a.id!)" title="Supprimer">
+                    <i class="material-icons">delete</i>
+                  </button>
+                </td>
+              </tr>
+              <tr *ngIf="agences.length === 0">
+                <td colspan="6" class="empty-row">Aucune agence enregistrée.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</div>

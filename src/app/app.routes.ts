@@ -1,7 +1,6 @@
 import { Routes } from '@angular/router';
 import { Login } from './shared/composants/login/login';
 import { TableauDeBord } from './fonctionnalites/tableau-de-bord/tableau-de-bord';
-import { FormulairesDeployes } from './fonctionnalites/formulaires-deployes/formulaires-deployes';
 import { GestionComptes } from './fonctionnalites/gestion-comptes/gestion-comptes';
 import { AnalyseDonnees } from './fonctionnalites/analyse-donnees/analyse-donnees';
 import { authGuard } from './core/guards/auth.guard';
@@ -12,31 +11,32 @@ import { Reservations } from './fonctionnalites/reservations/reservations';
 import { Feedbacks } from './fonctionnalites/feedbacks/feedbacks';
 import { ColisComponent } from './fonctionnalites/colis/colis';
 import { TourneesComponent } from './fonctionnalites/tournees/tournees';
+import { Agences } from './fonctionnalites/agences/agences';
 
 export const routes: Routes = [
   { path: '', redirectTo: 'login', pathMatch: 'full' },
   { path: 'login', component: Login },
 
   // Routes protégées
-  { path: 'tableau-de-bord',       component: TableauDeBord,       canActivate: [authGuard] },
-  { path: 'formulaires',           component: FormulairesDeployes, canActivate: [authGuard] },
-  { path: 'gestion-comptes',       component: GestionComptes,      canActivate: [authGuard] },
-  { path: 'analyse-donnees/:id',   component: AnalyseDonnees,      canActivate: [authGuard] },
+  { path: 'tableau-de-bord',     component: TableauDeBord,     canActivate: [authGuard] },
+  { path: 'gestion-comptes',     component: GestionComptes,    canActivate: [authGuard] },
+  { path: 'analyse-donnees/:id', component: AnalyseDonnees,    canActivate: [authGuard] },
 
-  // Routes transport
-  { path: 'villes',                component: Villes,             canActivate: [authGuard] },
-  { path: 'vehicules',             component: Vehicules,          canActivate: [authGuard] },
-  { path: 'trajets',               component: Trajets,            canActivate: [authGuard] },
+  // Transport
+  { path: 'villes',              component: Villes,            canActivate: [authGuard] },
+  { path: 'vehicules',           component: Vehicules,         canActivate: [authGuard] },
+  { path: 'trajets',             component: Trajets,           canActivate: [authGuard] },
 
   // Réservations
-  { path: 'reservations',          component: Reservations,       canActivate: [authGuard] },
+  { path: 'reservations',        component: Reservations,      canActivate: [authGuard] },
 
-  // Gestion des colis et tournées
-  { path: 'colis',                 component: ColisComponent,     canActivate: [authGuard] },
-  { path: 'tournees',              component: TourneesComponent,  canActivate: [authGuard] },
+  // Colis & tournées
+  { path: 'colis',               component: ColisComponent,    canActivate: [authGuard] },
+  { path: 'tournees',            component: TourneesComponent, canActivate: [authGuard] },
 
-  // Feedbacks
-  { path: 'feedbacks',             component: Feedbacks,          canActivate: [authGuard] },
+  // Admin
+  { path: 'agences',             component: Agences,           canActivate: [authGuard] },
+  { path: 'feedbacks',           component: Feedbacks,         canActivate: [authGuard] },
 
   { path: '**', redirectTo: 'login' }
 ];

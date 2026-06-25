@@ -52,6 +52,11 @@ export class Sidebar implements OnInit {
     return this.userRole === 'ADMIN' || this.userRole === 'SUPER_ADMIN';
   }
 
+  isAdmin(): boolean {
+    const role = localStorage.getItem('userRole') || '';
+    return role === 'ADMIN' || role === 'ROLE_ADMIN';
+  }
+
   logout() {
     // Exemple : effacer le token et rediriger vers la page de connexion
     localStorage.removeItem('token');

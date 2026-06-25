@@ -28,8 +28,11 @@ export class Vehicules implements OnInit {
     modele: '', 
     immatriculation: '', 
     capacite: 0, 
-    statut: StatutVehicule.Disponible,
-    image: '' 
+    capaciteSoute: 0,
+    statut: StatutVehicule.DISPONIBLE,
+    image: '',
+    villeBaseId: '',
+    villeActuelleId: ''
   };
 
   // Gestion des fichiers image
@@ -152,8 +155,11 @@ export class Vehicules implements OnInit {
       modele: '', 
       immatriculation: '', 
       capacite: 0, 
-      statut: StatutVehicule.Disponible,
-      image: '' 
+      capaciteSoute: 0,
+      statut: StatutVehicule.DISPONIBLE,
+      image: '',
+      villeBaseId: '',
+      villeActuelleId: ''
     };
     this.selectedFile = null;
     this.imagePreview = '';
@@ -287,8 +293,11 @@ export class Vehicules implements OnInit {
       modele: this.vehiculeEditer.modele,
       immatriculation: this.vehiculeEditer.immatriculation,
       capacite: this.vehiculeEditer.capacite,
+      capaciteSoute: this.vehiculeEditer.capaciteSoute,
       statut: this.vehiculeEditer.statut,
-      image: this.vehiculeEditer.image || ''
+      image: this.vehiculeEditer.image || '',
+      villeBaseId: this.vehiculeEditer.villeBaseId,
+      villeActuelleId: this.vehiculeEditer.villeActuelleId
     };
 
     this.vehiculeService.update(this.vehiculeEditer.id, payload).subscribe({
@@ -304,10 +313,10 @@ export class Vehicules implements OnInit {
   // Helper pour obtenir le libellé du statut
   getStatutLibelle(statut: StatutVehicule): string {
     switch (statut) {
-      case StatutVehicule.Disponible: return 'Disponible';
-      case StatutVehicule.En_Service: return 'En Service';
-      case StatutVehicule.En_maintenance: return 'En Maintenance';
-      case StatutVehicule.Indisponible: return 'Indisponible';
+      case StatutVehicule.DISPONIBLE: return 'Disponible';
+      case StatutVehicule.EN_ROUTE: return 'En Router';
+      case StatutVehicule.EN_MAINTENANCE: return 'En Maintenance';
+      case StatutVehicule.HORS_SERVICE: return 'Hors service';
       default: return 'Inconnu';
     }
   }
@@ -315,10 +324,10 @@ export class Vehicules implements OnInit {
   // Helper pour obtenir la classe CSS du statut
   getStatutClass(statut: StatutVehicule): string {
     switch (statut) {
-      case StatutVehicule.Disponible: return 'statut-disponible';
-      case StatutVehicule.En_Service: return 'statut-en-service';
-      case StatutVehicule.En_maintenance: return 'statut-maintenance';
-      case StatutVehicule.Indisponible: return 'statut-indisponible';
+      case StatutVehicule.DISPONIBLE: return 'statut-disponible';
+      case StatutVehicule.EN_ROUTE: return 'statut-en-route';
+      case StatutVehicule.EN_MAINTENANCE: return 'statut-maintenance';
+      case StatutVehicule.HORS_SERVICE: return 'statut-hors-service';
       default: return '';
     }
   }

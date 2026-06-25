@@ -43,13 +43,13 @@ export class Header implements OnInit {
   constructor(private authService: AuthService, private userService: UserService, private router: Router, private elementRef: ElementRef) {}
 
   ngOnInit(): void {
-    console.log(localStorage);
+    // console.log(localStorage);
     this.userRole = localStorage.getItem('userRole') || '';
 
     this.user = this.authService.getCurrentUser();
     // this.userName = this.user? this.user.nom || user.first_name || 'Utilisateur';
 
-    console.log("utilisateur connecté: ", this.authService.getCurrentUser());
+    // console.log("utilisateur connecté: ", this.authService.getCurrentUser());
     // this.userService.fetchCurrentUser().subscribe({
     //   next: (user: Utilisateur) => {
     //     this.utilisateurConnecte = user;
