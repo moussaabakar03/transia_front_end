@@ -6,8 +6,9 @@
         
         <!-- <img *ngIf="userAvatar; else defaultAvatar" [src]="userAvatar" alt="Avatar" class="user-avatar-img"> -->
         
-        <img *ngIf="userAvatar" [src]="userAvatar" alt="Avatar" class="user-avatar-img">
-        <span *ngIf="!userAvatar" class="material-icons avatar-icon">account_circle</span>
+        <img src="images/admin.jpg" alt="Avatar" class="user-avatar-img">
+        <!-- <img *ngIf="userAvatar" [src]="userAvatar" alt="Avatar" class="user-avatar-img"> -->
+        <!-- <span *ngIf="!userAvatar" class="material-icons avatar-icon">account_circle</span> -->
 
         <ng-template #defaultAvatar>
           <span class="material-icons avatar-icon">account_circle</span>

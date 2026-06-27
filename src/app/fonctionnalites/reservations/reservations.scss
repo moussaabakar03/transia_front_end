@@ -952,7 +952,9 @@ app-sidebar {
   grid-column: span 1;
 }
 
-.form-field {
+.form-field,
+.form-field-full,
+.form-field-half {
   display: flex;
   flex-direction: column;
   gap: 6px;

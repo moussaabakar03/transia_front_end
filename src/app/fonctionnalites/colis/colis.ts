@@ -1,12 +1,36 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, ChangeDetectorRef, HostListener } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { forkJoin } from 'rxjs';
 import { Sidebar } from '../../shared/composants/sidebar/sidebar';
 import { Header } from '../../shared/composants/header/header';
-import { Colis, ColisRequest, StatutColis, ModeDepot } from '../../shared/models/colis.model';
+import { Colis, ColisRequest, StatutColis, ModeDepot, ModeRemise } from '../../shared/models/colis.model';
+import { Ville } from '../../shared/models/ville';
+import { Trajet } from '../../shared/models/trajet';
+import { UserResponse } from '../../shared/models/users';
 import { ColisService } from '../../core/services/colis.service';
 import { LivreurService } from '../../core/services/livreur.service';
-import { UserResponse } from '../../shared/models/users';
+import { VilleService } from '../../core/services/transport/ville-service';
+import { TrajetService } from '../../core/services/transport/trajet-service';
+import { CurrentUserService } from '../../core/services/current-user.service';
+
+interface ColisForm {
+  nomDestinataire: string;
+  adresseDestinataire: string;
+  telephoneDestinataire: string;
+  poids: number;
+  longueur: number;
+  largeur: number;
+  hauteur: number;
+  remarques: string;
+  modeDepot: ModeDepot;
+  modeRemise: ModeRemise | '';
+  adresseCollecte: string;
+  telephoneCollecte: string;
+  villeDepartId: string;
+  villeArriveeId: string;
+  trajetId: string;
+}
 
 interface FormErrors {
   nomDestinataire?: string;
@@ -21,7 +45,8 @@ interface FormErrors {
 enum ModalMode {
   AJOUT = 'ajout',
   MODIFICATION = 'modification',
-  VISUALISATION = 'visualisation'
+  VISUALISATION = 'visualisation',
+  ASSIGNER = 'assigner'
 }
 
 @Component({
@@ -32,26 +57,33 @@ enum ModalMode {
   styleUrl: './colis.scss',
 })
 export class ColisComponent implements OnInit {
-  // Make enums accessible in template
   readonly ModalMode = ModalMode;
   readonly StatutColis = StatutColis;
   readonly ModeDepot = ModeDepot;
+  readonly ModeRemise = ModeRemise;
 
   colisList: Colis[] = [];
   filteredColis: Colis[] = [];
+  villes: Ville[] = [];
+  trajets: Trajet[] = [];
   livreurs: UserResponse[] = [];
+  trajetsFiltres: Trajet[] = [];
 
   // Pagination
-  currentPage: number = 1;
-  itemsPerPage: number = 10;
+  currentPage = 1;
+  itemsPerPage = 8;
   paginatedColis: Colis[] = [];
-  totalPages: number = 1;
+  totalPages = 1;
 
   isLoading = true;
   errorMessage = '';
   searchTerm = '';
   selectedStatut: StatutColis | '' = '';
-  selectedLivreur: string = '';
+
+  // Contexte agent connecté
+  agentVilleId:  string | null = null;
+  agentVilleNom  = '';
+  isAdmin        = false;
 
   // Modal
   isModalOpen = false;
@@ -61,321 +93,310 @@ export class ColisComponent implements OnInit {
   formErrors: FormErrors = {};
   modalMode: ModalMode = ModalMode.AJOUT;
   editingId: string | null = null;
+  selectedColis: Colis | null = null;
+  selectedLivreurId = '';
 
-  form: ColisRequest = this.emptyForm();
-
-  statutOptions = Object.values(StatutColis);
-  modeDepotOptions = Object.values(ModeDepot);
+  form: ColisForm = this.emptyForm();
 
   constructor(
-    private colisService: ColisService,
-    private livreurService: LivreurService
+    private colisService:  ColisService,
+    private livreurService: LivreurService,
+    private villeService:  VilleService,
+    private trajetService: TrajetService,
+    private cd:            ChangeDetectorRef,
+    private currentUser:   CurrentUserService
   ) {}
 
   ngOnInit(): void {
-    this.loadColis();
-    this.loadLivreurs();
+    this.agentVilleId  = this.currentUser.getVilleId();
+    this.agentVilleNom = this.currentUser.getVilleNom() ?? '';
+    this.isAdmin       = this.currentUser.isGlobalView();
+    this.loadAll();
   }
 
-  emptyForm(): ColisRequest {
-    return {
-      nomDestinataire: '',
-      adresseDestinataire: '',
-      telephoneDestinataire: '',
-      poids: 0,
-      longueur: 0,
-      largeur: 0,
-      hauteur: 0,
-      modeDepot: ModeDepot.DEPOT_AGENCE,
-      remarques: ''
-    };
-  }
-
-  loadColis(): void {
+  loadAll(): void {
     this.isLoading = true;
-    this.colisService.getAll().subscribe({
-      next: (data) => {
-        this.colisList = data;
-        this.filteredColis = data;
-        this.applyPagination();
+    forkJoin({
+      colis: this.colisService.getAll(),
+      villes: this.villeService.getAllVilles(),
+      trajets: this.trajetService.getAll(),
+      livreurs: this.livreurService.getLivreurs()
+    }).subscribe({
+      next: r => {
+        this.colisList = r.colis || [];
+        this.villes    = r.villes || [];
+        this.trajets   = r.trajets || [];
+        this.livreurs  = r.livreurs || [];
+        this.applyFilters();
         this.isLoading = false;
+        this.cd.detectChanges();
       },
-      error: (err) => {
-        this.errorMessage = 'Erreur lors du chargement des colis';
+      error: () => {
+        this.errorMessage = 'Erreur lors du chargement.';
         this.isLoading = false;
-        console.error(err);
-      }
-    });
-  }
-
-  loadLivreurs(): void {
-    this.livreurService.getLivreursDisponibles().subscribe({
-      next: (data) => {
-        this.livreurs = data;
-      },
-      error: (err) => {
-        console.error('Erreur lors du chargement des livreurs', err);
       }
     });
   }
 
   applyFilters(): void {
-    this.filteredColis = this.colisList.filter(colis => {
-      const matchesSearch = !this.searchTerm || 
-        colis.nomDestinataire.toLowerCase().includes(this.searchTerm.toLowerCase()) ||
-        colis.numeroSuivi?.toLowerCase().includes(this.searchTerm.toLowerCase()) ||
-        colis.adresseDestinataire.toLowerCase().includes(this.searchTerm.toLowerCase());
-      
-      const matchesStatut = !this.selectedStatut || colis.statut === this.selectedStatut;
-      const matchesLivreur = !this.selectedLivreur || colis.livreurId === this.selectedLivreur;
-
-      return matchesSearch && matchesStatut && matchesLivreur;
+    const term = this.searchTerm.toLowerCase();
+    this.filteredColis = this.colisList.filter(c => {
+      const matchSearch = !term ||
+        c.nomDestinataire.toLowerCase().includes(term) ||
+        c.numeroSuivi?.toLowerCase().includes(term) ||
+        c.villeDepartNom?.toLowerCase().includes(term) ||
+        c.villeArriveeNom?.toLowerCase().includes(term);
+      const matchStatut = !this.selectedStatut || c.statut === this.selectedStatut;
+      return matchSearch && matchStatut;
     });
-
     this.currentPage = 1;
-    this.applyPagination();
+    this.updatePagination();
   }
 
-  applyPagination(): void {
-    this.totalPages = Math.ceil(this.filteredColis.length / this.itemsPerPage);
-    const startIndex = (this.currentPage - 1) * this.itemsPerPage;
-    const endIndex = startIndex + this.itemsPerPage;
-    this.paginatedColis = this.filteredColis.slice(startIndex, endIndex);
+  updatePagination(): void {
+    this.totalPages = Math.ceil(this.filteredColis.length / this.itemsPerPage) || 1;
+    const start = (this.currentPage - 1) * this.itemsPerPage;
+    this.paginatedColis = this.filteredColis.slice(start, start + this.itemsPerPage);
   }
 
   changePage(page: number): void {
-    if (page >= 1 && page <= this.totalPages) {
-      this.currentPage = page;
-      this.applyPagination();
+    if (page < 1 || page > this.totalPages) return;
+    this.currentPage = page;
+    this.updatePagination();
+  }
+
+  getPaginationPages(): number[] {
+    const pages: number[] = [];
+    const max = 5;
+    if (this.totalPages <= max) {
+      for (let i = 1; i <= this.totalPages; i++) pages.push(i);
+    } else {
+      const start = Math.max(1, this.currentPage - 2);
+      const end   = Math.min(this.totalPages, start + max - 1);
+      for (let i = start; i <= end; i++) pages.push(i);
+    }
+    return pages;
+  }
+
+  onVilleDepartChange(): void {
+    this.form.villeArriveeId = '';
+    this.form.trajetId = '';
+    this.trajetsFiltres = [];
+  }
+
+  onVilleArriveeChange(): void {
+    this.form.trajetId = '';
+    if (this.form.villeDepartId && this.form.villeArriveeId) {
+      this.trajetsFiltres = this.trajets.filter(t =>
+        t.villeDepart?.id === this.form.villeDepartId &&
+        t.villeArrivee?.id === this.form.villeArriveeId
+      );
     }
   }
 
-  openModal(mode: ModalMode, colis?: Colis): void {
-    this.modalMode = mode;
-    this.isModalOpen = true;
-    this.formError = '';
-    this.formSuccess = '';
-    this.formErrors = {};
-
-    if (mode === ModalMode.MODIFICATION && colis) {
-      this.editingId = colis.id || null;
-      this.form = {
-        nomDestinataire: colis.nomDestinataire,
-        adresseDestinataire: colis.adresseDestinataire,
-        telephoneDestinataire: colis.telephoneDestinataire,
-        poids: colis.poids,
-        longueur: colis.longueur,
-        largeur: colis.largeur,
-        hauteur: colis.hauteur,
-        modeDepot: colis.modeDepot,
-        remarques: colis.remarques || '',
-        adresseCollecte: colis.adresseCollecte,
-        telephoneCollecte: colis.telephoneCollecte,
-        dateHeureCollecteSouhaitee: colis.dateHeureCollecteSouhaitee,
-        latitudeDestinataire: colis.latitudeDestinataire,
-        longitudeDestinataire: colis.longitudeDestinataire,
-        latitudeCollecte: colis.latitudeCollecte,
-        longitudeCollecte: colis.longitudeCollecte
-      };
-    } else {
-      this.editingId = null;
-      this.form = this.emptyForm();
+  openCreate(): void {
+    this.modalMode = ModalMode.AJOUT;
+    this.editingId = null;
+    this.form = this.emptyForm();
+    // Pré-remplir la ville de départ avec la ville de l'agent
+    if (this.agentVilleId) {
+      this.form.villeDepartId = this.agentVilleId;
+      this.onVilleDepartChange();
     }
+    this.trajetsFiltres = [];
+    this.openModalCommon();
+  }
+
+  openView(c: Colis): void {
+    this.modalMode = ModalMode.VISUALISATION;
+    this.selectedColis = c;
+    this.openModalCommon();
+  }
+
+  openEdit(c: Colis): void {
+    this.modalMode = ModalMode.MODIFICATION;
+    this.editingId = c.id || null;
+    this.form = {
+      nomDestinataire:       c.nomDestinataire,
+      adresseDestinataire:   c.adresseDestinataire,
+      telephoneDestinataire: c.telephoneDestinataire,
+      poids:                 c.poids,
+      longueur:              c.longueur,
+      largeur:               c.largeur,
+      hauteur:               c.hauteur,
+      remarques:             c.remarques || '',
+      modeDepot:             c.modeDepot,
+      modeRemise:            c.modeRemise || '',
+      adresseCollecte:       c.adresseCollecte || '',
+      telephoneCollecte:     c.telephoneCollecte || '',
+      villeDepartId:         c.villeDepartId || '',
+      villeArriveeId:        c.villeArriveeId || '',
+      trajetId:              c.trajetId || '',
+    };
+    if (c.villeDepartId && c.villeArriveeId) {
+      this.trajetsFiltres = this.trajets.filter(t =>
+        t.villeDepart?.id === c.villeDepartId &&
+        t.villeArrivee?.id === c.villeArriveeId
+      );
+    }
+    this.openModalCommon();
+  }
+
+  openAssigner(c: Colis): void {
+    this.modalMode = ModalMode.ASSIGNER;
+    this.selectedColis = c;
+    this.selectedLivreurId = c.livreurId || '';
+    this.openModalCommon();
+  }
+
+  private openModalCommon(): void {
+    this.formError = ''; this.formSuccess = ''; this.formErrors = {};
+    this.isModalOpen = true;
+    document.body.style.overflow = 'hidden';
   }
 
   closeModal(): void {
+    if (this.isSubmitting) return;
     this.isModalOpen = false;
-    this.form = this.emptyForm();
-    this.editingId = null;
+    this.selectedColis = null;
+    document.body.style.overflow = '';
   }
+
+  @HostListener('document:keydown.escape')
+  onEscape(): void { if (this.isModalOpen) this.closeModal(); }
 
   validateForm(): boolean {
     this.formErrors = {};
-
-    if (!this.form.nomDestinataire.trim()) {
-      this.formErrors.nomDestinataire = 'Le nom du destinataire est requis';
-    }
-    if (!this.form.adresseDestinataire.trim()) {
-      this.formErrors.adresseDestinataire = 'L\'adresse du destinataire est requise';
-    }
-    if (!this.form.telephoneDestinataire.trim()) {
-      this.formErrors.telephoneDestinataire = 'Le téléphone du destinataire est requis';
-    }
-    if (!this.form.poids || this.form.poids <= 0) {
-      this.formErrors.poids = 'Le poids doit être supérieur à 0';
-    }
-    if (!this.form.longueur || this.form.longueur <= 0) {
-      this.formErrors.longueur = 'La longueur doit être supérieure à 0';
-    }
-    if (!this.form.largeur || this.form.largeur <= 0) {
-      this.formErrors.largeur = 'La largeur doit être supérieure à 0';
-    }
-    if (!this.form.hauteur || this.form.hauteur <= 0) {
-      this.formErrors.hauteur = 'La hauteur doit être supérieure à 0';
-    }
-
-    if (this.form.modeDepot === ModeDepot.ENLEVEMENT_DOMICILE) {
-      if (!this.form.adresseCollecte?.trim()) {
-        this.formErrors.adresseDestinataire = 'L\'adresse de collecte est requise pour l\'enlèvement à domicile';
-      }
-      if (!this.form.telephoneCollecte?.trim()) {
-        this.formErrors.telephoneDestinataire = 'Le téléphone de collecte est requis pour l\'enlèvement à domicile';
-      }
-    }
-
+    if (!this.form.nomDestinataire.trim())       this.formErrors.nomDestinataire       = 'Champ obligatoire';
+    if (!this.form.adresseDestinataire.trim())   this.formErrors.adresseDestinataire   = 'Champ obligatoire';
+    if (!this.form.telephoneDestinataire.trim()) this.formErrors.telephoneDestinataire = 'Champ obligatoire';
+    if (!this.form.poids || this.form.poids <= 0)     this.formErrors.poids    = 'Poids requis (> 0)';
+    if (!this.form.longueur || this.form.longueur <= 0) this.formErrors.longueur = 'Longueur requise';
+    if (!this.form.largeur || this.form.largeur <= 0)   this.formErrors.largeur  = 'Largeur requise';
+    if (!this.form.hauteur || this.form.hauteur <= 0)   this.formErrors.hauteur  = 'Hauteur requise';
     return Object.keys(this.formErrors).length === 0;
   }
 
   submitForm(): void {
-    if (!this.validateForm()) {
-      return;
-    }
-
+    if (!this.validateForm()) return;
     this.isSubmitting = true;
     this.formError = '';
 
+    const payload: ColisRequest = {
+      nomDestinataire:       this.form.nomDestinataire.trim(),
+      adresseDestinataire:   this.form.adresseDestinataire.trim(),
+      telephoneDestinataire: this.form.telephoneDestinataire.trim(),
+      poids:                 this.form.poids,
+      longueur:              this.form.longueur,
+      largeur:               this.form.largeur,
+      hauteur:               this.form.hauteur,
+      remarques:             this.form.remarques.trim() || undefined,
+      modeDepot:             this.form.modeDepot,
+      modeRemise:            this.form.modeRemise as ModeRemise || undefined,
+      adresseCollecte:       this.form.adresseCollecte || undefined,
+      telephoneCollecte:     this.form.telephoneCollecte || undefined,
+      villeDepartId:         this.form.villeDepartId || undefined,
+      villeArriveeId:        this.form.villeArriveeId || undefined,
+      trajetId:              this.form.trajetId || undefined,
+    };
+
     if (this.modalMode === ModalMode.AJOUT) {
-      this.colisService.create(this.form).subscribe({
-        next: () => {
-          this.formSuccess = 'Colis créé avec succès';
-          this.isSubmitting = false;
-          this.loadColis();
-          setTimeout(() => this.closeModal(), 1500);
-        },
-        error: (err) => {
-          this.formError = 'Erreur lors de la création du colis';
-          this.isSubmitting = false;
-          console.error(err);
-        }
+      this.colisService.create(payload).subscribe({
+        next: (n) => { this.isSubmitting = false; this.formSuccess = 'Colis créé avec succès.'; this.colisList.unshift(n); this.applyFilters(); setTimeout(() => this.closeModal(), 1500); },
+        error: (err) => { this.isSubmitting = false; this.formError = err.error?.message || 'Erreur lors de la création.'; }
       });
-    } else if (this.modalMode === ModalMode.MODIFICATION && this.editingId) {
-      this.colisService.updatePartial(this.editingId, this.form).subscribe({
-        next: () => {
-          this.formSuccess = 'Colis mis à jour avec succès';
-          this.isSubmitting = false;
-          this.loadColis();
-          setTimeout(() => this.closeModal(), 1500);
-        },
-        error: (err) => {
-          this.formError = 'Erreur lors de la mise à jour du colis';
-          this.isSubmitting = false;
-          console.error(err);
-        }
+    } else if (this.editingId) {
+      this.colisService.updatePartial(this.editingId, payload).subscribe({
+        next: (u) => { this.isSubmitting = false; this.formSuccess = 'Colis mis à jour.'; const i = this.colisList.findIndex(c => c.id === this.editingId); if (i !== -1) this.colisList[i] = u; this.applyFilters(); setTimeout(() => this.closeModal(), 1500); },
+        error: (err) => { this.isSubmitting = false; this.formError = err.error?.message || 'Erreur lors de la mise à jour.'; }
       });
     }
   }
 
-  assignerLivreur(colisId: string, livreurId: string): void {
-    this.colisService.assignerLivreur(colisId, livreurId).subscribe({
-      next: () => {
-        this.loadColis();
-      },
-      error: (err) => {
-        console.error('Erreur lors de l\'assignation du livreur', err);
-      }
+  submitAssigner(): void {
+    if (!this.selectedColis?.id || !this.selectedLivreurId) return;
+    this.isSubmitting = true;
+    this.colisService.assignerLivreur(this.selectedColis.id, this.selectedLivreurId).subscribe({
+      next: (u) => { this.isSubmitting = false; const i = this.colisList.findIndex(c => c.id === u.id); if (i !== -1) this.colisList[i] = u; this.applyFilters(); this.closeModal(); },
+      error: () => { this.isSubmitting = false; this.formError = 'Erreur lors de l\'assignation.'; }
     });
   }
 
-  assignerLivreurWithId(colisId: string, livreurId: number | string | undefined): void {
-    if (livreurId) {
-      this.assignerLivreur(colisId, String(livreurId));
-    }
-  }
-
-  getLivreurFullName(livreurId: string): string {
-    const livreur = this.livreurs.find(l => String(l.id) === livreurId);
-    return livreur?.fullName || '';
-  }
-
-  getDefaultLivreurId(): string {
-    return String(this.livreurs[0]?.id || '');
-  }
-
-  collecter(colisId: string): void {
-    const commentaire = prompt('Commentaire (optionnel) :');
-    this.colisService.collecter(colisId, commentaire || undefined).subscribe({
-      next: () => {
-        this.loadColis();
-      },
-      error: (err) => {
-        console.error('Erreur lors de la collecte', err);
-      }
+  collecter(c: Colis): void {
+    if (!c.id) return;
+    this.colisService.collecter(c.id).subscribe({
+      next: (u) => { const i = this.colisList.findIndex(x => x.id === u.id); if (i !== -1) this.colisList[i] = u; this.applyFilters(); },
+      error: (err) => alert(err.error?.message || 'Erreur collecte.')
     });
   }
 
-  livrer(colisId: string): void {
-    const commentaire = prompt('Commentaire (optionnel) :');
-    this.colisService.livrer(colisId, commentaire || undefined).subscribe({
-      next: () => {
-        this.loadColis();
-      },
-      error: (err) => {
-        console.error('Erreur lors de la livraison', err);
-      }
+  livrer(c: Colis): void {
+    if (!c.id) return;
+    this.colisService.livrer(c.id).subscribe({
+      next: (u) => { const i = this.colisList.findIndex(x => x.id === u.id); if (i !== -1) this.colisList[i] = u; this.applyFilters(); },
+      error: (err) => alert(err.error?.message || 'Erreur livraison.')
     });
   }
 
-  annuler(colisId: string): void {
-    if (confirm('Êtes-vous sûr de vouloir annuler ce colis ?')) {
-      this.colisService.annuler(colisId).subscribe({
-        next: () => {
-          this.loadColis();
-        },
-        error: (err) => {
-          console.error('Erreur lors de l\'annulation', err);
-        }
-      });
-    }
+  annuler(c: Colis): void {
+    if (!c.id || !confirm('Annuler ce colis ?')) return;
+    this.colisService.annuler(c.id).subscribe({
+      next: () => { const i = this.colisList.findIndex(x => x.id === c.id); if (i !== -1) this.colisList[i].statut = StatutColis.ANNULE; this.applyFilters(); },
+      error: (err) => alert(err.error?.message || 'Erreur annulation.')
+    });
   }
 
-  getStatutClass(statut: StatutColis): string {
-    switch (statut) {
-      case StatutColis.EN_ATTENTE_COLLECTE:
-        return 'status-pending';
-      case StatutColis.PRIS_EN_CHARGE:
-        return 'status-in-progress';
-      case StatutColis.COLLECTE_EFFECTUEE:
-        return 'status-collected';
-      case StatutColis.EN_COURS:
-        return 'status-in-transit';
-      case StatutColis.LIVRE:
-        return 'status-delivered';
-      case StatutColis.ANNULE:
-        return 'status-cancelled';
-      default:
-        return '';
-    }
+  getTrajetLabel(t: Trajet): string {
+    return `${t.villeDepart?.nomVille || '?'} → ${t.villeArrivee?.nomVille || '?'} · ${t.dateDepart} ${t.heureDepart}`;
   }
 
-  getStatutLabel(statut: StatutColis): string {
-    switch (statut) {
-      case StatutColis.EN_ATTENTE_COLLECTE:
-        return 'En attente de collecte';
-      case StatutColis.PRIS_EN_CHARGE:
-        return 'Pris en charge';
-      case StatutColis.COLLECTE_EFFECTUEE:
-        return 'Collecté';
-      case StatutColis.EN_COURS:
-        return 'En cours de livraison';
-      case StatutColis.LIVRE:
-        return 'Livré';
-      case StatutColis.ANNULE:
-        return 'Annulé';
-      default:
-        return statut;
-    }
+  getStatutConfig(s: StatutColis): { label: string; css: string } {
+    const map: Record<StatutColis, { label: string; css: string }> = {
+      [StatutColis.EN_ATTENTE_COLLECTE]: { label: 'En attente',    css: 'st-attente'   },
+      [StatutColis.PRIS_EN_CHARGE]:      { label: 'Pris en charge', css: 'st-charge'    },
+      [StatutColis.COLLECTE_EFFECTUEE]:  { label: 'Collecté',       css: 'st-collecte'  },
+      [StatutColis.EN_COURS]:            { label: 'En transit',      css: 'st-transit'   },
+      [StatutColis.LIVRE]:               { label: 'Livré',           css: 'st-livre'     },
+      [StatutColis.ANNULE]:              { label: 'Annulé',          css: 'st-annule'    },
+    };
+    return map[s] || { label: s, css: '' };
   }
 
-  getModeDepotLabel(mode: ModeDepot): string {
-    switch (mode) {
-      case ModeDepot.ENLEVEMENT_DOMICILE:
-        return 'Enlèvement à domicile';
-      case ModeDepot.DEPOT_AGENCE:
-        return 'Dépôt en agence';
-      case ModeDepot.CREATION_AGENCE:
-        return 'Création par agent';
-      default:
-        return mode;
-    }
+  getModeDepotLabel(m: ModeDepot): string {
+    const map: Record<ModeDepot, string> = {
+      [ModeDepot.ENLEVEMENT_DOMICILE]: 'Enlèvement domicile',
+      [ModeDepot.DEPOT_AGENCE]:        'Dépôt agence',
+      [ModeDepot.CREATION_AGENCE]:     'Création agent',
+    };
+    return map[m] || m;
+  }
+
+  getModeRemiseLabel(m: ModeRemise | string | undefined): string {
+    if (!m) return '—';
+    const map: Record<string, string> = {
+      LIVRAISON_DOMICILE: 'Livraison domicile',
+      RETRAIT_AGENCE:     'Retrait agence',
+    };
+    return map[m] || m;
+  }
+
+  canEdit(c: Colis): boolean    { return c.statut === StatutColis.EN_ATTENTE_COLLECTE; }
+  canAssign(c: Colis): boolean  { return c.statut === StatutColis.EN_ATTENTE_COLLECTE; }
+  canCollect(c: Colis): boolean { return c.statut === StatutColis.PRIS_EN_CHARGE; }
+  canDeliver(c: Colis): boolean { return c.statut === StatutColis.COLLECTE_EFFECTUEE || c.statut === StatutColis.EN_COURS; }
+  canCancel(c: Colis): boolean  { return c.statut !== StatutColis.LIVRE && c.statut !== StatutColis.ANNULE; }
+
+  getQrUrl(data: string): string {
+    return 'https://api.qrserver.com/v1/create-qr-code/?size=140x140&data=' + encodeURIComponent(data);
+  }
+
+  private emptyForm(): ColisForm {
+    return {
+      nomDestinataire: '', adresseDestinataire: '', telephoneDestinataire: '',
+      poids: 0, longueur: 0, largeur: 0, hauteur: 0, remarques: '',
+      modeDepot: ModeDepot.DEPOT_AGENCE, modeRemise: '',
+      adresseCollecte: '', telephoneCollecte: '',
+      villeDepartId: '', villeArriveeId: '', trajetId: ''
+    };
   }
 }

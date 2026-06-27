@@ -6,11 +6,15 @@ import { UserResponse } from '../../shared/models/users';
 
 @Injectable({ providedIn: 'root' })
 export class LivreurService {
-  private baseUrl = `${environment.baseUrl}/livreurs`;
+  private baseUrl = `${environment.baseUrl}/utilisateur`;
 
   constructor(private http: HttpClient) {}
 
+  getLivreurs(): Observable<UserResponse[]> {
+    return this.http.get<UserResponse[]>(`${this.baseUrl}/livreurs`);
+  }
+
   getLivreursDisponibles(): Observable<UserResponse[]> {
-    return this.http.get<UserResponse[]>(`${this.baseUrl}/disponibles`);
+    return this.getLivreurs();
   }
 }

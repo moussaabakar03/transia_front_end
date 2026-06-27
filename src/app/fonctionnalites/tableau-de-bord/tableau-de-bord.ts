@@ -1,181 +1,215 @@
-import { Component, OnInit, ChangeDetectorRef, inject } from '@angular/core';
+import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { forkJoin } from 'rxjs';
 import { Sidebar } from '../../shared/composants/sidebar/sidebar';
 import { Header } from '../../shared/composants/header/header';
-import { StatsCards } from './composants/stats-cards/stats-cards';
-import { ReservationsRecentes } from './composants/reservations-recentes/reservations-recentes';
-import { ModaleApercu } from '../../shared/composants/modale-apercu/modale-apercu';
 import { TrajetService } from '../../core/services/transport/trajet-service';
 import { ReservationService } from '../../core/services/reservation-service';
+import { ColisService } from '../../core/services/colis.service';
+import { CurrentUserService } from '../../core/services/current-user.service';
 import { Trajet } from '../../shared/models/trajet';
 import { Reservation } from '../../shared/models/reservation.model';
+import { Colis, StatutColis } from '../../shared/models/colis.model';
 
 @Component({
   selector: 'app-tableau-de-bord',
   standalone: true,
-  imports: [
-    CommonModule,
-    Sidebar,
-    Header,
-    ModaleApercu,
-    ReservationsRecentes,
-    StatsCards
-  ],
+  imports: [CommonModule, Sidebar, Header],
   templateUrl: './tableau-de-bord.html',
   styleUrl: './tableau-de-bord.scss'
 })
 export class TableauDeBord implements OnInit {
-  private cdr = inject(ChangeDetectorRef);
-  private trajetService = inject(TrajetService);
-  private reservationService = inject(ReservationService);
 
-  // États d'affichage des popups
-  afficherModale: boolean = false;
-  afficherChoix: boolean = false;
-  projetSelectionne: any = null;
-  refreshSignal: number = 0;
+  // ── Contexte utilisateur ──────────────────────────────
+  fullName   = '';
+  role       = '';
+  agenceNom  = '';
+  villeNom   = '';
+  villeId:   string | null = null;
+  isAdmin    = false;
+  today      = new Date();
 
-  // Données transport
-  trajets: Trajet[] = [];
+  // ── Données brutes ────────────────────────────────────
+  allTrajets:       Trajet[]      = [];
+  allReservations:  Reservation[] = [];
+  allColis:         Colis[]       = [];
+
+  // ── Données filtrées ──────────────────────────────────
+  trajets:      Trajet[]      = [];
   reservations: Reservation[] = [];
-  isLoadingTransport: boolean = true;
+  colis:        Colis[]       = [];
 
-  // KPIs
-  tauxOccupation: number = 0;
-  trajetsDuJourCount: number = 0;
-  reservationsEnAttenteCount: number = 0;
-  revenuMois: number = 0;
+  isLoading = true;
 
-  // Prochains départs + places disponibles
-  prochainsDeparts: Trajet[] = [];
-  placesDisponiblesParTrajet: { [id: string]: number } = {};
+  // ── KPIs Transport ────────────────────────────────────
+  departsAujourdhui     = 0;
+  reservationsEnAttente = 0;
+  tauxOccupation        = 0;
+  revenusMois           = 0;
+
+  // ── KPIs Colis ────────────────────────────────────────
+  colisEnAttente  = 0;
+  colisEnTransit  = 0;
+  colisLivres     = 0;
+
+  // ── Tableaux résumés ──────────────────────────────────
+  prochainsDeparts:    Trajet[]      = [];
+  reservationsRecentes: Reservation[] = [];
+  colisRecents:        Colis[]       = [];
+
+  constructor(
+    private trajetService:      TrajetService,
+    private reservationService: ReservationService,
+    private colisService:       ColisService,
+    private currentUser:        CurrentUserService,
+    private cdr:                ChangeDetectorRef
+  ) {}
 
   ngOnInit(): void {
-    this.chargerDonneesTransport();
+    this.fullName  = this.currentUser.getFullName();
+    this.role      = this.currentUser.getRole();
+    this.agenceNom = this.currentUser.getAgenceNom() || '';
+    this.villeNom  = this.currentUser.getVilleNom()  || '';
+    this.villeId   = this.currentUser.getVilleId();
+    this.isAdmin   = this.currentUser.isGlobalView();
+    this.chargerDonnees();
   }
 
-  get kpiData() {
-    return {
-      tauxOccupation: this.tauxOccupation,
-      departsAujourdhui: this.trajetsDuJourCount,
-      reservationsEnAttente: this.reservationsEnAttenteCount,
-      revenusMois: this.revenuMois
-    };
-  }
-
-  chargerDonneesTransport(): void {
-    this.isLoadingTransport = true;
+  chargerDonnees(): void {
+    this.isLoading = true;
     forkJoin({
-      listTrajets: this.trajetService.getAll(),
-      listReservations: this.reservationService.getAll()
+      trajets:      this.trajetService.getAll(),
+      reservations: this.reservationService.getAll(),
+      colis:        this.colisService.getAll()
     }).subscribe({
-      next: ({ listTrajets, listReservations }) => {
-        this.trajets = listTrajets || [];
-        this.reservations = listReservations || [];
+      next: r => {
+        this.allTrajets      = r.trajets      || [];
+        this.allReservations = r.reservations || [];
+        this.allColis        = r.colis        || [];
 
-        this.calculerKPITransport();
-        this.calculerProchainsDeparts();
-
-        this.isLoadingTransport = false;
+        this.filtrerParContexte();
+        this.calculerKPIs();
+        this.preparerTableaux();
+        this.isLoading = false;
         this.cdr.detectChanges();
       },
-      error: (err) => {
-        console.error('❌ [Dashboard] Erreur lors du chargement des flux de transport:', err);
-        this.isLoadingTransport = false;
-        this.cdr.detectChanges();
-      }
+      error: () => { this.isLoading = false; this.cdr.detectChanges(); }
     });
   }
 
-  private calculerKPITransport(): void {
-    const maintenant = new Date();
-    const aujString = maintenant.toISOString().split('T')[0];
-    const moisCourant = maintenant.getMonth();
-    const anneeCourante = maintenant.getFullYear();
+  private filtrerParContexte(): void {
+    if (this.isAdmin || !this.villeId) {
+      // ADMIN — toutes les données
+      this.trajets      = this.allTrajets;
+      this.reservations = this.allReservations;
+      this.colis        = this.allColis;
+    } else {
+      // AGENT — filtrer par ville de l'agence
+      this.trajets = this.allTrajets.filter(t =>
+        t.villeDepart.id === this.villeId || t.villeArrivee.id === this.villeId
+      );
+      const trajetIds = new Set(this.trajets.map(t => t.id));
+      this.reservations = this.allReservations.filter(r => trajetIds.has(r.trajetId));
+      this.colis = this.allColis.filter(c =>
+        c.villeDepartId === this.villeId || c.villeArriveeId === this.villeId
+      );
+    }
+  }
 
-    // 1. Trajets du jour
-    this.trajetsDuJourCount = this.trajets.filter(t => t.dateDepart === aujString).length;
+  private calculerKPIs(): void {
+    const today  = new Date().toISOString().split('T')[0];
+    const now    = new Date();
+    const mois   = now.getMonth();
+    const annee  = now.getFullYear();
 
-    // 2. Réservations en attente
-    this.reservationsEnAttenteCount = this.reservations.filter(r => r.statut === 'EN_ATTENTE').length;
+    // Transport
+    this.departsAujourdhui     = this.trajets.filter(t => t.dateDepart === today).length;
+    this.reservationsEnAttente = this.reservations.filter(r => r.statut === 'EN_ATTENTE').length;
 
-    // 3. Taux d'occupation global
-    let totalPlacesReservees = 0;
-    let totalCapaciteOfferte = 0;
+    let placesReservees = 0, capaciteTotale = 0;
     this.trajets.forEach(t => {
       if (t.vehicule?.capacite) {
-        totalCapaciteOfferte += t.vehicule.capacite;
-        const resFiltrees = this.reservations.filter(r => r.trajetId === t.id && r.statut !== 'ANNULEE');
-        resFiltrees.forEach(r => totalPlacesReservees += r.nombrePlace);
+        capaciteTotale  += t.vehicule.capacite;
+        const resTraj    = this.reservations.filter(r => r.trajetId === t.id && r.statut !== 'ANNULEE');
+        resTraj.forEach(r => placesReservees += r.nombrePlace);
       }
     });
-    this.tauxOccupation = totalCapaciteOfferte > 0 ? (totalPlacesReservees / totalCapaciteOfferte) * 100 : 0;
+    this.tauxOccupation = capaciteTotale > 0
+      ? Math.round((placesReservees / capaciteTotale) * 100) : 0;
 
-    // 4. Revenus du mois
-    this.revenuMois = 0;
-    const resDuMois = this.reservations.filter(r => {
+    const resMois = this.reservations.filter(r => {
       if (r.statut !== 'CONFIRMEE' && r.statut !== 'EN_ATTENTE') return false;
-      const dRes = new Date(r.dateReservation);
-      return dRes.getMonth() === moisCourant && dRes.getFullYear() === anneeCourante;
+      const d = new Date(r.dateReservation);
+      return d.getMonth() === mois && d.getFullYear() === annee;
     });
-    resDuMois.forEach(r => {
-      const tr = this.trajets.find(t => t.id === r.trajetId);
-      if (tr) {
-        this.revenuMois += (tr.tarif || 0) * r.nombrePlace;
-      }
-    });
+    this.revenusMois = resMois.reduce((sum, r) => {
+      const tarif = this.trajets.find(t => t.id === r.trajetId)?.tarif || 0;
+      return sum + tarif * r.nombrePlace;
+    }, 0);
+
+    // Colis
+    this.colisEnAttente = this.colis.filter(c =>
+      c.statut === StatutColis.EN_ATTENTE_COLLECTE || c.statut === StatutColis.PRIS_EN_CHARGE
+    ).length;
+    this.colisEnTransit = this.colis.filter(c =>
+      c.statut === StatutColis.COLLECTE_EFFECTUEE || c.statut === StatutColis.EN_COURS
+    ).length;
+    this.colisLivres = this.colis.filter(c => c.statut === StatutColis.LIVRE).length;
   }
 
-  private calculerProchainsDeparts(): void {
-    const maintenant = new Date();
+  private preparerTableaux(): void {
+    const now = new Date();
+
+    // Prochains départs (5 max)
     this.prochainsDeparts = this.trajets
       .filter(t => {
         if (!t.dateDepart) return false;
-        const [an, mois, jour] = t.dateDepart.split('-').map(Number);
-        const dateEtHeureTrajet = new Date(an, mois - 1, jour);
-        if (t.heureDepart) {
-          const [h, m] = t.heureDepart.split(':').map(Number);
-          dateEtHeureTrajet.setHours(h, m);
-        }
-        return dateEtHeureTrajet >= maintenant;
+        const dt = new Date(`${t.dateDepart}T${t.heureDepart || '00:00'}`);
+        return dt >= now;
       })
-      .sort((a, b) => {
-        const dateA = new Date(`${a.dateDepart}T${a.heureDepart || '00:00'}`);
-        const dateB = new Date(`${b.dateDepart}T${b.heureDepart || '00:00'}`);
-        return dateA.getTime() - dateB.getTime();
-      })
+      .sort((a, b) =>
+        new Date(`${a.dateDepart}T${a.heureDepart||'00:00'}`).getTime() -
+        new Date(`${b.dateDepart}T${b.heureDepart||'00:00'}`).getTime()
+      )
       .slice(0, 5);
 
-    // Calcul asynchrone des places disponibles
-    this.placesDisponiblesParTrajet = {};
-    this.prochainsDeparts.forEach(t => {
-      if (t.id) {
-        this.reservationService.getPlacesTrajet(t.id).subscribe({
-          next: (placesOccupees) => {
-            const capaciteTotale = t.vehicule?.capacite || 0;
-            this.placesDisponiblesParTrajet[t.id!] = capaciteTotale - placesOccupees;
-            this.cdr.detectChanges();
-          },
-          error: () => {
-            this.placesDisponiblesParTrajet[t.id!] = t.vehicule?.capacite || 0;
-          }
-        });
-      }
-    });
+    // Réservations récentes (5 max)
+    this.reservationsRecentes = [...this.reservations]
+      .sort((a, b) => new Date(b.dateReservation).getTime() - new Date(a.dateReservation).getTime())
+      .slice(0, 5);
+
+    // Colis récents (5 max)
+    this.colisRecents = [...this.colis]
+      .sort((a, b) => new Date(b.dateCreation || 0).getTime() - new Date(a.dateCreation || 0).getTime())
+      .slice(0, 5);
   }
 
-  // Méthodes liées aux modales (inchangées)
-  ouvrirPopUp(): void { this.afficherModale = true; this.cdr.detectChanges(); }
-  fermerPopUp(): void { this.afficherModale = false; this.cdr.detectChanges(); }
-  ouvrirSelection(): void { this.afficherChoix = true; this.cdr.detectChanges(); }
-  fermerSelection(): void { this.afficherChoix = false; this.cdr.detectChanges(); }
-  declencherCreationManuelle(): void { this.afficherChoix = false; this.ouvrirPopUp(); }
-  ouvrirApercu(projet: any): void { this.projetSelectionne = projet; this.cdr.detectChanges(); }
-  fermerApercu(): void { this.projetSelectionne = null; this.cdr.detectChanges(); }
-  rafrachirDonnees(): void {
-    this.refreshSignal++;
-    this.fermerPopUp();
-    this.chargerDonneesTransport();
+  getTrajetLabel(trajetId: string): string {
+    const t = this.trajets.find(x => x.id === trajetId);
+    return t ? `${t.villeDepart.nomVille} → ${t.villeArrivee.nomVille}` : '—';
+  }
+
+  getStatutColisClass(s: StatutColis): string {
+    const m: Record<string, string> = {
+      EN_ATTENTE_COLLECTE: 'st-attente', PRIS_EN_CHARGE: 'st-charge',
+      COLLECTE_EFFECTUEE: 'st-collecte', EN_COURS: 'st-transit',
+      LIVRE: 'st-livre', ANNULE: 'st-annule'
+    };
+    return m[s] || '';
+  }
+
+  getStatutColisLabel(s: StatutColis): string {
+    const m: Record<string, string> = {
+      EN_ATTENTE_COLLECTE: 'En attente', PRIS_EN_CHARGE: 'Pris en charge',
+      COLLECTE_EFFECTUEE: 'Collecté', EN_COURS: 'En transit',
+      LIVRE: 'Livré', ANNULE: 'Annulé'
+    };
+    return m[s] || s;
+  }
+
+  get pagesArray(): number[] { return Array(this.tauxOccupation).fill(0); }
+
+  getInitiale(): string {
+    return this.fullName ? this.fullName.charAt(0).toUpperCase() : '?';
   }
 }

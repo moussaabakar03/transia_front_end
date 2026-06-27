@@ -6,7 +6,7 @@ export enum StatutVehicule {
 }
 
 export interface Vehicule {
-  id?: string;
+  id: string;
   marque: string;
   modele: string;
   immatriculation: string;

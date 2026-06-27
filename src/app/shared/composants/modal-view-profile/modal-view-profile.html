@@ -1,75 +1,91 @@
 <div class="modal-overlay">
-  <div class="modal-card modal-view">
+  <div class="modal-card">
+
     <div class="modal-header">
-      <h2>{{ titre }}</h2>
+      <div class="modal-header-icon">
+        <span class="material-icons">account_circle</span>
+      </div>
+      <div class="modal-header-text">
+        <h2>{{ titre }}</h2>
+        <p>{{ profil ? profil.user.username : '' }}</p>
+      </div>
       <button class="btn-close" (click)="fermer.emit()">
         <span class="material-icons">close</span>
       </button>
     </div>
 
-    <div class="modal-body">
-      @if (profil) {
-        <div class="profile-avatar-section">
-          <img *ngIf="profil.photoProfil; else defaultAvatar" [src]="profil.photoProfil" alt="Avatar" class="profile-avatar">
-          <ng-template #defaultAvatar>
-            <div class="profile-avatar-placeholder">
-              <span class="material-icons">account_circle</span>
-            </div>
-          </ng-template>
-        </div>
+    <div class="modal-body" *ngIf="profil">
 
-        <div class="profile-section">
-          <h3>Informations de Compte</h3>
-          <div class="info-item">
-            <label>Nom d'utilisateur:</label>
-            <span>{{ profil.user.username }}</span>
-          </div>
-          <div class="info-item">
-            <label>Email:</label>
-            <span>{{ profil.user.username }}</span>
-          </div>
-          <div class="info-item">
-            <label>Nom complet:</label>
-            <span>{{ profil.user.fullName }}</span>
-          </div>
-          <!-- <div class="info-item">
-            <label>Rôle:</label>
-            <span class="role-badge" [ngClass]="profil.user.roles.name.toLowerCase()">
-              {{ getRoleLabel(profil.user.roles.name) }}
-            </span>
-          </div> -->
-          <div class="info-item">
-            <label>Statut:</label>
-            <span class="status-badge" [ngClass]="getStatusClass(profil.user.enable)">
-              {{ profil.user.enable ? 'Actif' : 'Inactif' }}
-            </span>
-          </div>
+      <!-- Avatar -->
+      <div class="avatar-section">
+        <img *ngIf="profil.photoProfil" [src]="profil.photoProfil" alt="Avatar" class="avatar-img" />
+        <div *ngIf="!profil.photoProfil" class="avatar-placeholder">
+          <span class="material-icons">account_circle</span>
         </div>
+        <div class="avatar-info">
+          <div class="avatar-name">{{ profil.user.fullName }}</div>
+          <span class="role-badge">{{ profil.user.roles.name }}</span>
+          <span class="status-badge" [class.st-active]="profil.user.enable" [class.st-inactive]="!profil.user.enable">
+            {{ profil.user.enable ? 'Actif' : 'Inactif' }}
+          </span>
+        </div>
+      </div>
 
-        <div class="profile-section">
-          <h3>Informations Personnelles</h3>
-          <div class="info-item">
-            <label>Adresse:</label>
-            <span>{{ profil.adresse || '-' }}</span>
+      <!-- Compte -->
+      <div class="form-section">
+        <div class="form-section-title">
+          <span class="material-icons">lock</span> Compte
+        </div>
+        <div class="view-grid">
+          <div class="detail-item">
+            <div class="detail-item-label"><span class="material-icons">person</span> Nom d'utilisateur</div>
+            <div class="detail-item-value">{{ profil.user.username }}</div>
           </div>
-          <div class="info-item">
-            <label>Téléphone:</label>
-            <span>{{ profil.telephone }}</span>
+          <div class="detail-item">
+            <div class="detail-item-label"><span class="material-icons">badge</span> Nom complet</div>
+            <div class="detail-item-value">{{ profil.user.fullName }}</div>
           </div>
-          <div class="info-item">
-            <label>Date de naissance:</label>
-            <span>{{ profil.user.createdAt }}</span>
+          <div class="detail-item">
+            <div class="detail-item-label"><span class="material-icons">calendar_today</span> Inscrit le</div>
+            <div class="detail-item-value">{{ profil.user.createdAt | date:'dd/MM/yyyy' }}</div>
           </div>
-          <div class="info-item">
-            <label>Date d'inscription:</label>
-            <span>{{ profil.user.createdAt | date: 'dd/MM/yyyy' }}</span>
+          <div class="detail-item" *ngIf="profil.user.villeBaseNom">
+            <div class="detail-item-label"><span class="material-icons">home_pin</span> Ville de base</div>
+            <div class="detail-item-value">{{ profil.user.villeBaseNom }}</div>
+          </div>
+          <div class="detail-item" *ngIf="profil.user.villeActuelleNom">
+            <div class="detail-item-label"><span class="material-icons">my_location</span> Ville actuelle</div>
+            <div class="detail-item-value">{{ profil.user.villeActuelleNom }}</div>
+          </div>
+          <div class="detail-item" *ngIf="profil.user.statutOperationnel">
+            <div class="detail-item-label"><span class="material-icons">radio_button_checked</span> Statut opérationnel</div>
+            <div class="detail-item-value">{{ profil.user.statutOperationnel }}</div>
           </div>
         </div>
-      }
+      </div>
+
+      <!-- Coordonnées -->
+      <div class="form-section">
+        <div class="form-section-title">
+          <span class="material-icons">contact_phone</span> Coordonnées
+        </div>
+        <div class="view-grid">
+          <div class="detail-item">
+            <div class="detail-item-label"><span class="material-icons">phone</span> Téléphone</div>
+            <div class="detail-item-value">{{ profil.telephone || '—' }}</div>
+          </div>
+          <div class="detail-item" style="grid-column:1/-1">
+            <div class="detail-item-label"><span class="material-icons">location_on</span> Adresse</div>
+            <div class="detail-item-value">{{ profil.adresse || '—' }}</div>
+          </div>
+        </div>
+      </div>
+
     </div>
 
     <div class="modal-footer">
-      <button class="btn-close-modal" (click)="fermer.emit()">FERMER</button>
+      <button class="btn-cancel" (click)="fermer.emit()">Fermer</button>
     </div>
+
   </div>
 </div>

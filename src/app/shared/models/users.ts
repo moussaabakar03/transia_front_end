@@ -1,7 +1,7 @@
 export interface RoleDTO {
   id: number;
   publicId?: string;
-  name: 'ADMIN' | 'AGENT_ACCUEIL' | 'CLIENT' | 'CHAUFFEUR';
+  name: 'ADMIN' | 'AGENT_ACCUEIL' | 'CLIENT' | 'CHAUFFEUR' | 'LIVREUR';
 }
 
 export interface UserResponse {
@@ -12,6 +12,12 @@ export interface UserResponse {
   enable: boolean;
   roles: RoleDTO;
   createdAt?: string;
+  villeBaseId?: string;
+  villeBaseNom?: string;
+  villeActuelleId?: string;
+  villeActuelleNom?: string;
+  agenceId?: string;
+  statutOperationnel?: string;
 }
 
 export interface UserCreateDTO {
@@ -20,6 +26,9 @@ export interface UserCreateDTO {
   password: string;
   roles: RoleDTO | null;
   enable?: boolean;
+  villeBaseId?: string;
+  villeActuelleId?: string;
+  agenceId?: string;
 }
 
 export interface UserUpdateDTO {
@@ -27,6 +36,9 @@ export interface UserUpdateDTO {
   username: string;
   roles: RoleDTO | null;
   enable: boolean;
+  villeBaseId?: string;
+  villeActuelleId?: string;
+  agenceId?: string;
 }
 
 export interface ProfilDTO {

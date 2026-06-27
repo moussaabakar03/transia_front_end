@@ -1,64 +1,180 @@
 <div class="modal-overlay">
   <div class="modal-card">
+
     <div class="modal-header">
-      <h2>Modifier l'utilisateur</h2>
+      <div class="modal-header-icon">
+        <span class="material-icons">edit</span>
+      </div>
+      <div class="modal-header-text">
+        <h2>Modifier l'utilisateur</h2>
+        <p>{{ profil?.user?.fullName }}</p>
+      </div>
       <button class="btn-close" (click)="fermer.emit()">
         <span class="material-icons">close</span>
       </button>
     </div>
 
     <div class="modal-body" *ngIf="profil">
-      <div class="form-section">
-        <h3>Identifiants</h3>
-        <div class="input-group">
-          <label>Nom complet *</label>
-          <input type="text" [(ngModel)]="userData.fullName" [disabled]="isLoading">
-        </div>
-        <div class="input-group">
-          <label>Nom d'utilisateur *</label>
-          <input type="text" [(ngModel)]="userData.username" [disabled]="isLoading">
-        </div>
-        <!-- modal-edit-user.html, extrait -->
-        <div class="input-group">
-          <label>Rôle</label>
-          <select [(ngModel)]="selectedRoleId" [disabled]="isLoading || isLoadingRoles">
-            <option *ngFor="let role of rolesList" [ngValue]="role.id">{{ role.name }}</option>
-          </select>
-        </div>
-        <div class="input-group">
-          <label>Statut</label>
-          <select [(ngModel)]="userData.enable" [disabled]="isLoading">
-            <option [ngValue]="true">Actif</option>
-            <option [ngValue]="false">Inactif</option>
-          </select>
-        </div>
+
+      <div *ngIf="errorMessage" class="alert-error">
+        <span class="material-icons">error_outline</span>
+        {{ errorMessage }}
       </div>
 
+      <!-- ── Identifiants & rôle ── -->
       <div class="form-section">
-        <h3>Profil</h3>
-        <div class="input-group">
-          <label>Téléphone</label>
-          <input type="tel" [(ngModel)]="profilData.telephone" [disabled]="isLoading">
+        <div class="form-section-title">
+          <span class="material-icons">lock</span> Identifiants & rôle
         </div>
-        <div class="input-group">
-          <label>Adresse</label>
-          <input type="text" [(ngModel)]="profilData.adresse" [disabled]="isLoading">
-        </div>
-        <div class="input-group">
-          <label>Photo de profil</label>
-          <input type="file" accept="image/*" (change)="onFileSelected($event)" [disabled]="isLoading">
-          <div *ngIf="photoPreview" class="photo-preview">
-            <img [src]="photoPreview" width="80">
+        <div class="form-grid">
+          <div class="form-field form-field-full">
+            <label>Nom complet <span class="required">*</span></label>
+            <div class="input-wrap">
+              <span class="material-icons input-icon">badge</span>
+              <input type="text" class="form-control" [(ngModel)]="userData.fullName" [disabled]="isLoading" />
+            </div>
+          </div>
+          <div class="form-field form-field-half">
+            <label>Nom d'utilisateur <span class="required">*</span></label>
+            <div class="input-wrap">
+              <span class="material-icons input-icon">person</span>
+              <input type="text" class="form-control" [(ngModel)]="userData.username" [disabled]="isLoading" />
+            </div>
+          </div>
+          <div class="form-field form-field-half">
+            <label>Statut</label>
+            <div class="input-wrap">
+              <span class="material-icons input-icon">toggle_on</span>
+              <select class="form-select" [(ngModel)]="userData.enable" [disabled]="isLoading">
+                <option [ngValue]="true">Actif</option>
+                <option [ngValue]="false">Inactif</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-field form-field-full">
+            <label>Rôle</label>
+            <div class="input-wrap">
+              <span class="material-icons input-icon">admin_panel_settings</span>
+              <select class="form-select" [(ngModel)]="selectedRoleId"
+                      (ngModelChange)="onRoleChange()"
+                      [disabled]="isLoading || isLoadingRoles">
+                <option *ngIf="isLoadingRoles" [ngValue]="null">Chargement...</option>
+                <option *ngFor="let role of rolesList" [ngValue]="role.id">{{ role.name }}</option>
+              </select>
+            </div>
           </div>
         </div>
       </div>
+
+      <!-- ── Localisation (Chauffeur / Livreur) ── -->
+      <div class="form-section" *ngIf="isFieldAgent">
+        <div class="form-section-title">
+          <span class="material-icons">location_on</span> Localisation
+          <span class="section-badge badge-chauffeur">{{ selectedRole?.name }}</span>
+        </div>
+        <div class="form-grid">
+          <div class="form-field form-field-half">
+            <label>Ville de base</label>
+            <div class="input-wrap">
+              <span class="material-icons input-icon">home_pin</span>
+              <select class="form-select" [(ngModel)]="userData.villeBaseId" [disabled]="isLoading">
+                <option value="">— Non définie —</option>
+                <option *ngFor="let v of villes" [value]="v.id">{{ v.nomVille }}</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-field form-field-half">
+            <label>Ville actuelle</label>
+            <div class="input-wrap">
+              <span class="material-icons input-icon">my_location</span>
+              <select class="form-select" [(ngModel)]="userData.villeActuelleId" [disabled]="isLoading">
+                <option value="">— Non définie —</option>
+                <option *ngFor="let v of villes" [value]="v.id">{{ v.nomVille }}</option>
+              </select>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── Agence (Agent d'accueil) ── -->
+      <div class="form-section" *ngIf="isAgent">
+        <div class="form-section-title">
+          <span class="material-icons">store</span> Affectation agence
+          <span class="section-badge badge-agent">AGENT ACCUEIL</span>
+        </div>
+        <div class="form-grid">
+          <div class="form-field form-field-half">
+            <label>Ville</label>
+            <div class="input-wrap">
+              <span class="material-icons input-icon">location_city</span>
+              <select class="form-select" [(ngModel)]="userData.villeBaseId"
+                      (ngModelChange)="onVilleBaseChange()" [disabled]="isLoading">
+                <option value="">— Toutes les villes —</option>
+                <option *ngFor="let v of villes" [value]="v.id">{{ v.nomVille }}</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-field form-field-half">
+            <label>Agence d'appartenance</label>
+            <div class="input-wrap">
+              <span class="material-icons input-icon">store</span>
+              <select class="form-select" [(ngModel)]="userData.agenceId" [disabled]="isLoading">
+                <option value="">— Sélectionner —</option>
+                <option *ngFor="let a of agencesFiltrees" [value]="a.id">{{ a.nom }}</option>
+              </select>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── Profil ── -->
+      <div class="form-section">
+        <div class="form-section-title">
+          <span class="material-icons">contact_phone</span> Profil
+        </div>
+        <div class="form-grid">
+          <div class="form-field form-field-half">
+            <label>Téléphone</label>
+            <div class="input-wrap">
+              <span class="material-icons input-icon">phone</span>
+              <input type="tel" class="form-control" placeholder="+228 ..."
+                     [(ngModel)]="profilData.telephone" [disabled]="isLoading" />
+            </div>
+          </div>
+          <div class="form-field form-field-half">
+            <label>Adresse</label>
+            <div class="input-wrap">
+              <span class="material-icons input-icon">location_on</span>
+              <input type="text" class="form-control"
+                     [(ngModel)]="profilData.adresse" [disabled]="isLoading" />
+            </div>
+          </div>
+          <div class="form-field form-field-full">
+            <label>Photo de profil</label>
+            <div class="file-upload-wrap">
+              <label class="file-upload-btn">
+                <span class="material-icons">upload</span>
+                Choisir une image
+                <input type="file" accept="image/*" (change)="onFileSelected($event)" [disabled]="isLoading" hidden />
+              </label>
+              <div *ngIf="photoPreview" class="photo-preview">
+                <img [src]="photoPreview" alt="Aperçu" />
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
     </div>
 
     <div class="modal-footer">
-      <button class="btn-cancel" (click)="fermer.emit()" [disabled]="isLoading">ANNULER</button>
+      <button class="btn-cancel" (click)="fermer.emit()" [disabled]="isLoading">Annuler</button>
       <button class="btn-submit" [disabled]="isLoading" (click)="submit()">
-        {{ isLoading ? 'ENREGISTREMENT...' : 'ENREGISTRER' }}
+        <span *ngIf="isLoading" class="spinner-small"></span>
+        <span *ngIf="!isLoading" class="material-icons">save</span>
+        {{ isLoading ? 'Enregistrement...' : 'Enregistrer' }}
       </button>
     </div>
+
   </div>
 </div>

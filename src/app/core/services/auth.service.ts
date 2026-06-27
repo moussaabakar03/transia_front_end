@@ -26,13 +26,19 @@ export class AuthService {
             : 'CLIENT';
           
           const userProfile = {
-            id: response.id || '',
-            username: response.username || credentials.username,
-            nom: response.fullName || '',
-            prenom: '',
-            role: roleName
+            id:        response.id       || '',
+            publicId:  response.id       || '',
+            username:  response.username || credentials.username,
+            fullName:  response.fullName || '',
+            nom:       response.fullName || '',
+            prenom:    '',
+            role:      roleName,
+            agenceId:  response.agenceId  || null,
+            agenceNom: response.agenceNom || null,
+            villeId:   response.villeId   || null,
+            villeNom:  response.villeNom  || null,
           };
-          
+
           localStorage.setItem('transia_user', JSON.stringify(userProfile));
           localStorage.setItem('userRole', roleName);
         }

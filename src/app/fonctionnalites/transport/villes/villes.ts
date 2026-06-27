@@ -23,7 +23,7 @@ export class Villes implements OnInit {
 
   // Données éditées / en cours
   villeEditer: Ville | null = null;
-  nouvelleVille: Ville = { nomVille: '', region: '' };
+  nouvelleVille: Ville = { id: '', nomVille: '', region: '' };
 
   // Pagination
   pageActuelle: number = 1;
@@ -124,7 +124,7 @@ export class Villes implements OnInit {
 
   // Actions de création
   ouvrirCreation(): void {
-    this.nouvelleVille = { nomVille: '', region: '' };
+    this.nouvelleVille = { id: '', nomVille: '', region: '' };
     this.afficherCreationVille = true;
   }
 

@@ -15,6 +15,11 @@ export enum ModeDepot {
   CREATION_AGENCE = 'CREATION_AGENCE'
 }
 
+export enum ModeRemise {
+  LIVRAISON_DOMICILE = 'LIVRAISON_DOMICILE',
+  RETRAIT_AGENCE = 'RETRAIT_AGENCE'
+}
+
 export interface HistoriqueColis {
   id?: string;
   colisId?: string;
@@ -54,6 +59,13 @@ export interface Colis {
   longitudeCollecte?: number;
   historique?: HistoriqueColis[];
   tourneeId?: string;
+  villeDepartId?: string;
+  villeDepartNom?: string;
+  villeArriveeId?: string;
+  villeArriveeNom?: string;
+  trajetId?: string;
+  modeRemise?: ModeRemise;
+  qrCode?: string;
 }
 
 export interface ColisRequest {
@@ -74,4 +86,8 @@ export interface ColisRequest {
   longitudeDestinataire?: number;
   latitudeCollecte?: number;
   longitudeCollecte?: number;
+  villeDepartId?: string;
+  villeArriveeId?: string;
+  trajetId?: string;
+  modeRemise?: ModeRemise;
 }

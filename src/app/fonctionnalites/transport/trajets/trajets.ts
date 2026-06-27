@@ -8,6 +8,7 @@ import { TrajetService } from '../../../core/services/transport/trajet-service';
 import { VilleService } from '../../../core/services/transport/ville-service';
 import { VehiculeService } from '../../../core/services/transport/vehicule-service';
 import { UserService } from '../../../core/services/user-service';
+import { CurrentUserService } from '../../../core/services/current-user.service';
 import { Ville } from '../../../shared/models/ville';
 import { Vehicule } from '../../../shared/models/vehicule';
 
@@ -61,14 +62,25 @@ export class Trajets implements OnInit {
   // Enum pour le template
   StatutTrajet = StatutTrajet;
 
+  // Contexte agent connecté
+  agentVilleId:  string | null = null;
+  agentVilleNom: string | null = null;
+  isAdmin = false;
+
   constructor(
-    private trajetService: TrajetService,
-    private villeService: VilleService,
+    private trajetService:   TrajetService,
+    private villeService:    VilleService,
     private vehiculeService: VehiculeService,
-    private userService: UserService
+    private userService:     UserService,
+    private currentUser:     CurrentUserService
   ) {}
 
   ngOnInit(): void {
+    const ctx        = this.currentUser.getContext();
+    this.agentVilleId  = ctx?.villeId  ?? null;
+    this.agentVilleNom = ctx?.villeNom ?? null;
+    this.isAdmin       = this.currentUser.isGlobalView();
+
     this.loadTrajets();
     this.loadVilles();
     this.loadVehicules();
@@ -182,7 +194,7 @@ export class Trajets implements OnInit {
 
   ouvrirCreation(): void {
     this.nouveauTrajet = {
-      villeDepartId: '',
+      villeDepartId: this.agentVilleId ?? '',
       villeArriveeId: '',
       vehiculeId: '',
       chauffeurId: null,

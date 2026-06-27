@@ -1,5 +1,5 @@
 export interface Ville {
-  id?: string;
+  id: string;
   nomVille: string;
   region: string;
 }
