@@ -5,7 +5,8 @@ import { forkJoin } from 'rxjs';
 import { UserService } from '../../../core/services/user-service';
 import { VilleService } from '../../../core/services/transport/ville-service';
 import { AgenceService } from '../../../core/services/agence.service';
-import { ProfilDTO, UserCreateDTO, RoleDTO } from '../../models/users';
+import { CurrentUserService } from '../../../core/services/current-user.service';
+import { RoleDTO, RoleName, UserCreateDTO } from '../../models/users';
 import { Ville } from '../../models/ville';
 import { Agence } from '../../models/agence.model';
 
@@ -20,9 +21,8 @@ export class ModalEnregistrementUser implements OnInit {
   @Output() success = new EventEmitter<any>();
 
   userData: UserCreateDTO = {
-    fullName: '', username: '', password: '',
-    roles: null, enable: true,
-    villeBaseId: '', villeActuelleId: '', agenceId: ''
+    fullName: '', telephone: '', email: '', password: '',
+    roles: [], villeBaseId: '', villeActuelleId: '', agenceId: ''
   };
 
   rolesList:  RoleDTO[]  = [];
@@ -30,20 +30,16 @@ export class ModalEnregistrementUser implements OnInit {
   agences:    Agence[]   = [];
   agencesFiltrees: Agence[] = [];
 
-  selectedRoleId: number | null = null;
-
-  profilData: Partial<ProfilDTO> = { adresse: '', telephone: '', photoProfil: null };
-
   isLoading        = false;
   isLoadingRoles   = false;
   isLoadingVilles  = false;
-  photoPreview: string | null = null;
   errorMessage = '';
 
   constructor(
     private userService: UserService,
     private villeService: VilleService,
-    private agenceService: AgenceService
+    private agenceService: AgenceService,
+    private currentUser: CurrentUserService
   ) {}
 
   ngOnInit(): void {
@@ -60,7 +56,6 @@ export class ModalEnregistrementUser implements OnInit {
         this.villes     = r.villes || [];
         this.agences    = r.agences || [];
         this.agencesFiltrees = this.agences;
-        if (r.roles.length > 0) this.selectedRoleId = r.roles[0].id;
         this.isLoadingRoles  = false;
         this.isLoadingVilles = false;
       },
@@ -71,21 +66,38 @@ export class ModalEnregistrementUser implements OnInit {
     });
   }
 
-  get selectedRole(): RoleDTO | undefined {
-    return this.rolesList.find(r => r.id === this.selectedRoleId);
+  /** Un ADMIN_AGENCE ne peut pas créer un SUPER_ADMIN ni un autre ADMIN_AGENCE */
+  get rolesSelectionnables(): RoleDTO[] {
+    if (this.currentUser.isSuperAdmin()) return this.rolesList;
+    return this.rolesList.filter(r => r.name !== 'SUPER_ADMIN' && r.name !== 'ADMIN_AGENCE');
   }
 
   get isFieldAgent(): boolean {
-    const n = this.selectedRole?.name;
-    return n === 'CHAUFFEUR' || n === 'LIVREUR';
+    return this.userData.roles.includes('CHAUFFEUR') || this.userData.roles.includes('LIVREUR');
   }
 
-  get isAgent(): boolean {
-    return this.selectedRole?.name === 'AGENT_ACCUEIL';
+  get isAgence(): boolean {
+    return this.userData.roles.includes('AGENT_ACCUEIL') || this.userData.roles.includes('ADMIN_AGENCE');
   }
 
   get needsVille(): boolean {
-    return this.isFieldAgent || this.isAgent;
+    return this.isFieldAgent || this.isAgence;
+  }
+
+  isRoleSelected(name: RoleName): boolean {
+    return this.userData.roles.includes(name);
+  }
+
+  toggleRole(name: RoleName): void {
+    if (this.isRoleSelected(name)) {
+      this.userData.roles = this.userData.roles.filter(r => r !== name);
+    } else {
+      this.userData.roles = [...this.userData.roles, name];
+    }
+    this.userData.villeBaseId     = '';
+    this.userData.villeActuelleId = '';
+    this.userData.agenceId        = '';
+    this.agencesFiltrees = this.agences;
   }
 
   onVilleBaseChange(): void {
@@ -94,44 +106,28 @@ export class ModalEnregistrementUser implements OnInit {
     this.userData.agenceId = '';
   }
 
-  onRoleChange(): void {
-    this.userData.villeBaseId   = '';
-    this.userData.villeActuelleId = '';
-    this.userData.agenceId      = '';
-    this.agencesFiltrees = this.agences;
-  }
-
-  onFileSelected(event: any) {
-    const file = event.target.files[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = (e: any) => {
-        this.photoPreview = e.target.result;
-        this.profilData.photoProfil = e.target.result;
-      };
-      reader.readAsDataURL(file);
-    }
-  }
-
   submit() {
     this.errorMessage = '';
 
-    if (!this.userData.username?.trim() || !this.userData.password?.trim() || !this.userData.fullName?.trim()) {
-      this.errorMessage = 'Veuillez remplir tous les champs obligatoires (nom, identifiant, mot de passe).';
+    if (!this.userData.telephone?.trim() || !this.userData.password?.trim() || !this.userData.fullName?.trim()) {
+      this.errorMessage = 'Veuillez remplir tous les champs obligatoires (nom, téléphone, mot de passe).';
       return;
     }
 
-    const roleChoisi = this.rolesList.find(r => r.id === this.selectedRoleId);
-    if (!roleChoisi) {
-      this.errorMessage = 'Veuillez sélectionner un rôle.';
+    if (!this.userData.roles || this.userData.roles.length === 0) {
+      this.errorMessage = 'Veuillez sélectionner au moins un rôle.';
       return;
     }
 
-    this.userData.roles = roleChoisi;
     this.isLoading = true;
 
     this.userService.createUser(this.userData).subscribe({
-      next: (user) => this.createProfil(user.id, user),
+      next: (user) => {
+        this.isLoading = false;
+        this.success.emit(user);
+        this.resetForm();
+        this.fermer.emit();
+      },
       error: (err) => {
         this.errorMessage = err?.error?.message || 'Erreur lors de la création du compte.';
         this.isLoading = false;
@@ -139,39 +135,12 @@ export class ModalEnregistrementUser implements OnInit {
     });
   }
 
-  createProfil(userId: number, user: any) {
-    const payload: ProfilDTO = {
-      userId,
-      photoProfil:  this.profilData.photoProfil || null,
-      telephone:    this.profilData.telephone   || '',
-      nomComplet:   this.userData.fullName,
-      adresse:      this.profilData.adresse     || ''
-    };
-
-    this.userService.createProfil(payload).subscribe({
-      next: (profil) => {
-        this.isLoading = false;
-        this.success.emit({ userId, user, profil });
-        this.resetForm();
-        this.fermer.emit();
-      },
-      error: () => {
-        this.isLoading = false;
-        this.fermer.emit();
-      }
-    });
-  }
-
   resetForm() {
     this.userData = {
-      fullName: '', username: '', password: '',
-      roles: null, enable: true,
-      villeBaseId: '', villeActuelleId: '', agenceId: ''
+      fullName: '', telephone: '', email: '', password: '',
+      roles: [], villeBaseId: '', villeActuelleId: '', agenceId: ''
     };
-    this.selectedRoleId      = this.rolesList.length > 0 ? this.rolesList[0].id : null;
-    this.profilData          = { adresse: '', telephone: '', photoProfil: null };
-    this.photoPreview        = null;
-    this.errorMessage        = '';
-    this.agencesFiltrees     = this.agences;
+    this.errorMessage    = '';
+    this.agencesFiltrees = this.agences;
   }
 }

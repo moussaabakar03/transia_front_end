@@ -7,12 +7,11 @@ export const authGuard: CanActivateFn = (route, state) => {
   const router = inject(Router);
 
   const isLoggedIn = authService.isLoggedIn();
-  const userRole = authService.getRole(); // Contiendra 'ROLE_ADMIN' ou 'ROLE_AGENT_ACCUEIL'
   const path = route.routeConfig?.path;
 
   // Si l'utilisateur est déjà connecté et tente d'aller sur /login
   if (isLoggedIn && path === 'login') {
-    router.navigate(['/tableau-de-bord']); 
+    router.navigate(['/tableau-de-bord']);
     return false;
   }
 
@@ -22,20 +21,20 @@ export const authGuard: CanActivateFn = (route, state) => {
     return false;
   }
 
-  // VÉRIFICATION GLOBALE DES ACCÈS DU BACK-OFFICE
+  // VÉRIFICATION GLOBALE DES ACCÈS DU BACK-OFFICE : seuls SUPER_ADMIN, ADMIN_AGENCE, AGENT_ACCUEIL
   if (isLoggedIn && path !== 'login') {
-    const rolesAutorises = ['ROLE_ADMIN', 'ROLE_AGENT_ACCUEIL', 'ADMIN', 'AGENT_ACCUEIL'];
-    
-    if (!userRole || !rolesAutorises.includes(userRole)) {
-      console.error(`Guard Bloquant : Le rôle ${userRole} n'est pas autorisé sur l'espace d'administration.`);
-      authService.logout(); // Déconnexion forcée de la session non-autorisée
+    if (!authService.isBackOfficeUser()) {
+      console.error(`Guard bloquant : rôles ${authService.getRoles()} non autorisés sur l'espace d'administration.`);
+      authService.logout();
       router.navigate(['/login']);
       return false;
     }
   }
 
-  // Droits restrictifs granulaires : Seul le rôle ROLE_ADMIN accède à la gestion des comptes
-  if (path === 'gestion-comptes' && userRole !== 'ROLE_ADMIN' && userRole !== 'ADMIN') {
+  // Droits restrictifs granulaires : ces routes sont réservées à SUPER_ADMIN et ADMIN_AGENCE
+  // (correspond aux entrées de menu masquées à AGENT_ACCUEIL dans sidebar.html)
+  const ROUTES_ADMIN = ['gestion-comptes', 'agences', 'feedbacks'];
+  if (path && ROUTES_ADMIN.includes(path) && !authService.hasRole('SUPER_ADMIN') && !authService.hasRole('ADMIN_AGENCE')) {
     router.navigate(['/tableau-de-bord']);
     return false;
   }

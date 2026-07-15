@@ -2,7 +2,6 @@ import { Routes } from '@angular/router';
 import { Login } from './shared/composants/login/login';
 import { TableauDeBord } from './fonctionnalites/tableau-de-bord/tableau-de-bord';
 import { GestionComptes } from './fonctionnalites/gestion-comptes/gestion-comptes';
-import { AnalyseDonnees } from './fonctionnalites/analyse-donnees/analyse-donnees';
 import { authGuard } from './core/guards/auth.guard';
 import { Villes } from './fonctionnalites/transport/villes/villes';
 import { Vehicules } from './fonctionnalites/transport/vehicules/vehicules';
@@ -20,7 +19,6 @@ export const routes: Routes = [
   // Routes protégées
   { path: 'tableau-de-bord',     component: TableauDeBord,     canActivate: [authGuard] },
   { path: 'gestion-comptes',     component: GestionComptes,    canActivate: [authGuard] },
-  { path: 'analyse-donnees/:id', component: AnalyseDonnees,    canActivate: [authGuard] },
 
   // Transport
   { path: 'villes',              component: Villes,            canActivate: [authGuard] },

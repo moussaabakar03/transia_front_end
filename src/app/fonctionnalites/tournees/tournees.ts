@@ -125,7 +125,7 @@ export class TourneesComponent implements OnInit {
     this.filteredTournees = this.tournees.filter(tournee => {
       const matchesSearch = !this.searchTerm || 
         tournee.zone?.toLowerCase().includes(this.searchTerm.toLowerCase()) ||
-        tournee.livreur?.username?.toLowerCase().includes(this.searchTerm.toLowerCase());
+        tournee.livreur?.fullName?.toLowerCase().includes(this.searchTerm.toLowerCase());
       
       const matchesDate = !this.selectedDate || tournee.dateTournee === this.selectedDate;
       const matchesLivreur = !this.selectedLivreur || tournee.livreurId === this.selectedLivreur;

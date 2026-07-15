@@ -7,26 +7,29 @@
       </div>
       <div class="modal-header-text">
         <h2>{{ titre }}</h2>
-        <p>{{ profil ? profil.user.username : '' }}</p>
+        <p>{{ utilisateur ? utilisateur.telephone : '' }}</p>
       </div>
       <button class="btn-close" (click)="fermer.emit()">
         <span class="material-icons">close</span>
       </button>
     </div>
 
-    <div class="modal-body" *ngIf="profil">
+    <div class="modal-body" *ngIf="utilisateur">
 
       <!-- Avatar -->
       <div class="avatar-section">
-        <img *ngIf="profil.photoProfil" [src]="profil.photoProfil" alt="Avatar" class="avatar-img" />
-        <div *ngIf="!profil.photoProfil" class="avatar-placeholder">
-          <span class="material-icons">account_circle</span>
-        </div>
+        @if (utilisateur.photoProfil) {
+          <img [src]="utilisateur.photoProfil" alt="Avatar" class="avatar-img">
+        } @else {
+          <div class="avatar-placeholder">
+            <span class="material-icons">account_circle</span>
+          </div>
+        }
         <div class="avatar-info">
-          <div class="avatar-name">{{ profil.user.fullName }}</div>
-          <span class="role-badge">{{ profil.user.roles.name }}</span>
-          <span class="status-badge" [class.st-active]="profil.user.enable" [class.st-inactive]="!profil.user.enable">
-            {{ profil.user.enable ? 'Actif' : 'Inactif' }}
+          <div class="avatar-name">{{ utilisateur.fullName }}</div>
+          <span class="role-badge">{{ rolesLabel() }}</span>
+          <span class="status-badge" [class.st-active]="utilisateur.statutCompte === 'ACTIF'" [class.st-inactive]="utilisateur.statutCompte !== 'ACTIF'">
+            {{ utilisateur.statutCompte }}
           </span>
         </div>
       </div>
@@ -38,45 +41,45 @@
         </div>
         <div class="view-grid">
           <div class="detail-item">
-            <div class="detail-item-label"><span class="material-icons">person</span> Nom d'utilisateur</div>
-            <div class="detail-item-value">{{ profil.user.username }}</div>
+            <div class="detail-item-label"><span class="material-icons">phone</span> Téléphone</div>
+            <div class="detail-item-value">{{ utilisateur.telephone }}</div>
+          </div>
+          <div class="detail-item" *ngIf="utilisateur.email">
+            <div class="detail-item-label"><span class="material-icons">mail</span> E-mail</div>
+            <div class="detail-item-value">{{ utilisateur.email }}</div>
           </div>
           <div class="detail-item">
             <div class="detail-item-label"><span class="material-icons">badge</span> Nom complet</div>
-            <div class="detail-item-value">{{ profil.user.fullName }}</div>
+            <div class="detail-item-value">{{ utilisateur.fullName }}</div>
           </div>
           <div class="detail-item">
             <div class="detail-item-label"><span class="material-icons">calendar_today</span> Inscrit le</div>
-            <div class="detail-item-value">{{ profil.user.createdAt | date:'dd/MM/yyyy' }}</div>
-          </div>
-          <div class="detail-item" *ngIf="profil.user.villeBaseNom">
-            <div class="detail-item-label"><span class="material-icons">home_pin</span> Ville de base</div>
-            <div class="detail-item-value">{{ profil.user.villeBaseNom }}</div>
-          </div>
-          <div class="detail-item" *ngIf="profil.user.villeActuelleNom">
-            <div class="detail-item-label"><span class="material-icons">my_location</span> Ville actuelle</div>
-            <div class="detail-item-value">{{ profil.user.villeActuelleNom }}</div>
-          </div>
-          <div class="detail-item" *ngIf="profil.user.statutOperationnel">
-            <div class="detail-item-label"><span class="material-icons">radio_button_checked</span> Statut opérationnel</div>
-            <div class="detail-item-value">{{ profil.user.statutOperationnel }}</div>
+            <div class="detail-item-value">{{ utilisateur.createdAt | date:'dd/MM/yyyy' }}</div>
           </div>
         </div>
       </div>
 
-      <!-- Coordonnées -->
-      <div class="form-section">
+      <!-- Affectation -->
+      <div class="form-section" *ngIf="utilisateur.agenceNom || utilisateur.villeBaseNom || utilisateur.villeActuelleNom || utilisateur.statutOperationnel">
         <div class="form-section-title">
-          <span class="material-icons">contact_phone</span> Coordonnées
+          <span class="material-icons">store</span> Affectation
         </div>
         <div class="view-grid">
-          <div class="detail-item">
-            <div class="detail-item-label"><span class="material-icons">phone</span> Téléphone</div>
-            <div class="detail-item-value">{{ profil.telephone || '—' }}</div>
+          <div class="detail-item" *ngIf="utilisateur.agenceNom">
+            <div class="detail-item-label"><span class="material-icons">store</span> Agence</div>
+            <div class="detail-item-value">{{ utilisateur.agenceNom }}</div>
           </div>
-          <div class="detail-item" style="grid-column:1/-1">
-            <div class="detail-item-label"><span class="material-icons">location_on</span> Adresse</div>
-            <div class="detail-item-value">{{ profil.adresse || '—' }}</div>
+          <div class="detail-item" *ngIf="utilisateur.villeBaseNom">
+            <div class="detail-item-label"><span class="material-icons">home_pin</span> Ville de base</div>
+            <div class="detail-item-value">{{ utilisateur.villeBaseNom }}</div>
+          </div>
+          <div class="detail-item" *ngIf="utilisateur.villeActuelleNom">
+            <div class="detail-item-label"><span class="material-icons">my_location</span> Ville actuelle</div>
+            <div class="detail-item-value">{{ utilisateur.villeActuelleNom }}</div>
+          </div>
+          <div class="detail-item" *ngIf="utilisateur.statutOperationnel">
+            <div class="detail-item-label"><span class="material-icons">radio_button_checked</span> Statut opérationnel</div>
+            <div class="detail-item-value">{{ utilisateur.statutOperationnel }}</div>
           </div>
         </div>
       </div>

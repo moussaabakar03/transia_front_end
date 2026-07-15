@@ -17,7 +17,7 @@ export class Login implements OnInit {
   splashFading = false;
 
   //  Formulaire ─
-  username = '';
+  telephone = '';
   password = '';
   isLoading = false;
   erreur = '';
@@ -51,7 +51,7 @@ export class Login implements OnInit {
 
 
   seConnecter(): void {
-    if (!this.username.trim() || !this.password.trim()) {
+    if (!this.telephone.trim() || !this.password.trim()) {
       this.erreur = 'Veuillez remplir tous les champs.';
       return;
     }
@@ -59,30 +59,16 @@ export class Login implements OnInit {
     this.isLoading = true;
     this.erreur = '';
 
-    this.authService.login({ username: this.username.trim(), password: this.password }).subscribe({
-      next: (response: any) => {
-        // console.log('Réponse complète :', JSON.stringify(response));
-        
-        // Extraction du rôle principal
-        const role = (response?.roles && response.roles.length > 0) 
-          ? response.roles[0] 
-          : (this.authService.getRole() || 'CLIENT');
-
-        console.log(`Rôle détecté : ${role}`, response);
-
-        // CONDITION DE SÉCURITÉ TRANSIA : Seuls ADMIN et AGENT_ACCUEIL se connectent au back-office
-        if (role !== 'ROLE_ADMIN' && role !== 'ROLE_AGENT_ACCUEIL' && role !== 'ADMIN' && role !== 'AGENT_ACCUEIL') {
-          // console.warn(`Accès refusé pour le rôle : ${role}`);
-          
-          // Nettoyage immédiat du localStorage pour invalider le jeton erroné stocké par le service
-          this.authService.logout(); 
-          
-          this.erreur = "Accès refusé !";
+    this.authService.login({ telephone: this.telephone.trim(), password: this.password }).subscribe({
+      next: () => {
+        // CONDITION DE SÉCURITÉ TRANSIA : seuls SUPER_ADMIN, ADMIN_AGENCE, AGENT_ACCUEIL accèdent au back-office
+        if (!this.authService.isBackOfficeUser()) {
+          this.authService.logout();
+          this.erreur = 'Accès refusé !';
           this.isLoading = false;
           return;
         }
 
-        // Si le rôle est valide, on poursuit la redirection normale
         if (this.urlRetour) {
           this.router.navigateByUrl(this.urlRetour);
           this.isLoading = false;
@@ -94,7 +80,7 @@ export class Login implements OnInit {
       },
       error: (err: any) => {
         console.error('Erreur de connexion :', err);
-        this.erreur = 'Identifiants incorrects. Veuillez réessayer.';
+        this.erreur = err?.error?.message || 'Identifiants incorrects. Veuillez réessayer.';
         this.isLoading = false;
       }
     });

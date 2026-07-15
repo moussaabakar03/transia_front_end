@@ -3,14 +3,14 @@
 
   <div class="main-content-area" [style.position]="'relative'">
     <app-header (actionCreer)="ouvrirSelectionGlobale()"></app-header>
-    
+
     <div class="page-body">
       <div class="dashboard-action-bar">
         <div class="welcome-text">
           <h1>Gestion des Comptes</h1>
           <p>Administrez les autorisations d'accès des collaborateurs et affectez les rôles sur le terrain.</p>
         </div>
-        
+
         <button class="btn-gold-action-local" (click)="ouvrirModaleCompte()">
           <span class="material-icons">person_add</span>
           NOUVEL UTILISATEUR
@@ -21,7 +21,7 @@
         <span class="material-icons">search</span>
         <input
           type="text"
-          placeholder="Rechercher par nom, email ou adresse..."
+          placeholder="Rechercher par nom, téléphone, email ou rôle..."
           [(ngModel)]="valeurSaisi"
           (input)="filtrerProfils()"
         />
@@ -32,67 +32,76 @@
           <thead>
             <tr>
               <th>UTILISATEUR</th>
-              <th>ADRESSE EMAIL</th>
-              <th>RÔLE SYSTÈME</th>
-              <th>STATUT DE CONFLICT</th>
+              <th>TÉLÉPHONE</th>
+              <th>RÔLES</th>
+              <th>STATUT</th>
               <th class="text-center">ACTIONS</th>
             </tr>
           </thead>
           <tbody>
-            @for (profil of comptesAffiches; track profil.userId) {
+            @for (u of comptesAffiches; track u.publicId) {
               <tr>
                 <td>
                   <div class="user-profile-cell">
-                    <!-- <span class="material-icons avatar-icon">account_circle</span> -->
-                     <!-- image ou circle avec initiales -->
-                    <img *ngIf="profil.photoProfil; else defaultAvatar" [src]="profil.photoProfil" alt="Avatar" class="user-avatar-img" style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover; margin-right: 10px;">
-                    <ng-template #defaultAvatar>
+                    @if (u.photoProfil) {
+                      <img [src]="u.photoProfil" alt="Avatar" class="user-avatar-img" style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover; margin-right: 10px;">
+                    } @else {
                       <span class="material-icons avatar-icon">account_circle</span>
-                    </ng-template>
+                    }
                     <div class="user-info-text">
-                      <span class="user-fullname">{{ profil.user.username }} {{ profil.user.fullName }}</span>
-                      <span class="user-id">ID: #00{{ profil.user.id }}</span>
+                      <span class="user-fullname">{{ u.fullName }}</span>
+                      <span class="user-id">ID: #00{{ u.id }}</span>
                     </div>
                   </div>
                 </td>
-                <td><span class="email-text">{{ profil.user.username }}</span></td>
+                <td><span class="email-text">{{ u.telephone }}</span></td>
                 <td>
-                  <span class="role-badge" [ngClass]="profil.user.roles.name === 'ADMIN' ? 'ADMIN' : 'AGENT_ACCUEIL'">
-                    {{ profil.user.roles.name }}
+                  <span class="role-badge" [ngClass]="rolesLabel(u).includes('ADMIN') ? 'ADMIN' : 'AGENT_ACCUEIL'">
+                    {{ rolesLabel(u) }}
                   </span>
                 </td>
                 <td>
-                  <span class="status-user-badge" [ngClass]="profil.user.enable ? 'active' : 'inactive'">
-                    {{ profil.user.enable ? 'Actif' : 'Inactif' }}
+                  <span class="status-user-badge" [ngClass]="u.statutCompte === 'ACTIF' ? 'active' : 'inactive'">
+                    {{ u.statutCompte }}
                   </span>
                 </td>
 
-                  
                 <td class="text-center actions-cell flex">
                   <div class="table-actions-group actions-comptes flex">
-                    <!-- Bouton suspend/activate -->
-                    @if (profil.user.enable) {
-                      <button class="btn-table-action delete" (click)="suspendreCompte(profil.user.publicId)" title="Suspendre ou révoquer les accès">
+                    @if (u.statutCompte === 'ACTIF') {
+                      <button class="btn-table-action delete" (click)="suspendreCompte(u.publicId)" title="Suspendre les accès">
                         <span class="material-icons">person_remove</span>
                       </button>
                     } @else {
-                      <button class="btn-table-action activate" (click)="activerCompte(profil.user.publicId)" title="Réactiver le compte">
+                      <button class="btn-table-action activate" (click)="activerCompte(u.publicId)" title="Réactiver le compte">
                         <span class="material-icons">person_add</span>
                       </button>
                     }
                   </div>
                   <div class="table-actions-group actions-comptes flex">
-                    <button class="btn-table-action edit" (click)="ouvrirEditCompte(profil)" title="Modifier les informations du compte">
+                    @if (u.statutCompte !== 'BLOQUE') {
+                      <button class="btn-table-action delete" (click)="bloquerCompte(u.publicId)" title="Bloquer le compte">
+                        <span class="material-icons">block</span>
+                      </button>
+                    }
+                  </div>
+                  <div class="table-actions-group actions-comptes flex">
+                    <button class="btn-table-action edit" (click)="reinitialiserMotDePasse(u.publicId)" title="Réinitialiser le mot de passe">
+                      <span class="material-icons">key</span>
+                    </button>
+                  </div>
+                  <div class="table-actions-group actions-comptes flex">
+                    <button class="btn-table-action edit" (click)="ouvrirEditCompte(u)" title="Modifier les informations du compte">
                       <span class="material-icons">edit</span>
                     </button>
                   </div>
                   <div class="table-actions-group actions-comptes flex">
-                    <button class="btn-table-action view" (click)="ouvrirViewProfile(profil)" title="Afficher le profil détaillé">
+                    <button class="btn-table-action view" (click)="ouvrirViewProfile(u)" title="Afficher le profil détaillé">
                       <span class="material-icons">visibility</span>
                     </button>
                   </div>
                   <div class="table-actions-group actions-comptes flex">
-                    <button class="btn-table-action delete" (click)="ouvrirDeleteCompte(profil.user.publicId, profil.user.username)" title="Supprimer le compte">
+                    <button class="btn-table-action delete" (click)="ouvrirDeleteCompte(u.publicId, u.fullName)" title="Supprimer le compte">
                       <span class="material-icons">delete</span>
                     </button>
                   </div>
@@ -113,8 +122,8 @@
             <span class="material-icons">chevron_left</span>
           </button>
           @for (p of [].constructor(totalPages); track $index) {
-            <button 
-              class="btn-pag" 
+            <button
+              class="btn-pag"
               [class.active]="pageActuelle === $index + 1"
               (click)="changerPage($index + 1)">
               {{ $index + 1 }}
@@ -135,8 +144,8 @@
   (success)="fermerCreationCompte()">
 </app-modal-enregistrement-user>
 
-<app-modal-edit-user *ngIf="afficherEditCompte" 
-  [profil]="profilEditer"
+<app-modal-edit-user *ngIf="afficherEditCompte"
+  [utilisateur]="utilisateurEditer"
   (fermer)="fermerEditCompte()"
   (success)="onEditSuccess()">
 </app-modal-edit-user>
@@ -149,7 +158,7 @@
 </app-modal-delete-user>
 
 <app-modal-view-profile *ngIf="afficherViewProfile"
-  [profil]="profilVoir"
+  [utilisateur]="utilisateurVoir"
   (fermer)="fermerViewProfile()"
   [titre]="titreViewProfil"
   >

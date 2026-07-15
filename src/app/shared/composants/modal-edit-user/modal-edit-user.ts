@@ -5,7 +5,8 @@ import { forkJoin } from 'rxjs';
 import { UserService } from '../../../core/services/user-service';
 import { VilleService } from '../../../core/services/transport/ville-service';
 import { AgenceService } from '../../../core/services/agence.service';
-import { ProfilComplet, ProfilDTO, RoleDTO, UserUpdateDTO } from '../../models/users';
+import { CurrentUserService } from '../../../core/services/current-user.service';
+import { RoleDTO, RoleName, UserResponse, UserUpdateDTO } from '../../models/users';
 import { Ville } from '../../models/ville';
 import { Agence } from '../../models/agence.model';
 
@@ -16,32 +17,29 @@ import { Agence } from '../../models/agence.model';
   styleUrl: './modal-edit-user.scss',
 })
 export class ModalEditUser implements OnInit, OnChanges {
-  @Input()  profil: ProfilComplet | null = null;
+  @Input()  utilisateur: UserResponse | null = null;
   @Output() fermer  = new EventEmitter<void>();
   @Output() success = new EventEmitter<any>();
 
   userData: {
-    fullName: string; username: string; enable: boolean;
-    villeBaseId: string; villeActuelleId: string; agenceId: string;
-  } = { fullName: '', username: '', enable: true, villeBaseId: '', villeActuelleId: '', agenceId: '' };
+    fullName: string; telephone: string; email: string; password: string;
+    villeBaseId: string; villeActuelleId: string; agenceId: string; roles: RoleName[];
+  } = { fullName: '', telephone: '', email: '', password: '', villeBaseId: '', villeActuelleId: '', agenceId: '', roles: [] };
 
   rolesList:       RoleDTO[] = [];
   villes:          Ville[]   = [];
   agences:         Agence[]  = [];
   agencesFiltrees: Agence[]  = [];
 
-  selectedRoleId: number | null = null;
-  profilData: Partial<ProfilDTO> = { adresse: '', telephone: '', photoProfil: null };
-
   isLoading       = false;
   isLoadingRoles  = false;
   errorMessage    = '';
-  photoPreview: string | null = null;
 
   constructor(
     private userService:  UserService,
     private villeService: VilleService,
-    private agenceService: AgenceService
+    private agenceService: AgenceService,
+    private currentUser: CurrentUserService
   ) {}
 
   ngOnInit(): void {
@@ -56,9 +54,7 @@ export class ModalEditUser implements OnInit, OnChanges {
         this.villes     = r.villes  || [];
         this.agences    = r.agences || [];
         this.agencesFiltrees = this.agences;
-        if (this.profil) {
-          this.selectedRoleId = this.profil.user.roles?.id ?? r.roles[0]?.id ?? null;
-        }
+        if (this.utilisateur) this.chargerDonnees();
         this.isLoadingRoles = false;
       },
       error: () => { this.isLoadingRoles = false; }
@@ -66,29 +62,35 @@ export class ModalEditUser implements OnInit, OnChanges {
   }
 
   ngOnChanges(changes: SimpleChanges): void {
-    if (changes['profil'] && this.profil) {
+    if (changes['utilisateur'] && this.utilisateur) {
       this.chargerDonnees();
     }
   }
 
-  get selectedRole(): RoleDTO | undefined {
-    return this.rolesList.find(r => r.id === this.selectedRoleId);
+  /** Un ADMIN_AGENCE ne peut pas attribuer SUPER_ADMIN ni ADMIN_AGENCE */
+  get rolesSelectionnables(): RoleDTO[] {
+    if (this.currentUser.isSuperAdmin()) return this.rolesList;
+    return this.rolesList.filter(r => r.name !== 'SUPER_ADMIN' && r.name !== 'ADMIN_AGENCE');
   }
 
   get isFieldAgent(): boolean {
-    const n = this.selectedRole?.name;
-    return n === 'CHAUFFEUR' || n === 'LIVREUR';
+    return this.userData.roles.includes('CHAUFFEUR') || this.userData.roles.includes('LIVREUR');
   }
 
-  get isAgent(): boolean {
-    return this.selectedRole?.name === 'AGENT_ACCUEIL';
+  get isAgence(): boolean {
+    return this.userData.roles.includes('AGENT_ACCUEIL') || this.userData.roles.includes('ADMIN_AGENCE');
   }
 
-  onRoleChange(): void {
-    this.userData.villeBaseId    = '';
-    this.userData.villeActuelleId = '';
-    this.userData.agenceId       = '';
-    this.agencesFiltrees = this.agences;
+  isRoleSelected(name: RoleName): boolean {
+    return this.userData.roles.includes(name);
+  }
+
+  toggleRole(name: RoleName): void {
+    if (this.isRoleSelected(name)) {
+      this.userData.roles = this.userData.roles.filter(r => r !== name);
+    } else {
+      this.userData.roles = [...this.userData.roles, name];
+    }
   }
 
   onVilleBaseChange(): void {
@@ -99,53 +101,35 @@ export class ModalEditUser implements OnInit, OnChanges {
   }
 
   private chargerDonnees(): void {
-    if (!this.profil) return;
-    const u = this.profil.user;
+    if (!this.utilisateur) return;
+    const u = this.utilisateur;
     this.userData = {
       fullName:        u.fullName,
-      username:        u.username,
-      enable:          u.enable,
+      telephone:       u.telephone,
+      email:           u.email || '',
+      password:        '',
       villeBaseId:     u.villeBaseId     || '',
       villeActuelleId: u.villeActuelleId || '',
-      agenceId:        u.agenceId        || ''
+      agenceId:        u.agenceId        || '',
+      roles:           (u.roles || []).map(r => r.name)
     };
-    this.selectedRoleId = u.roles?.id ?? (this.rolesList[0]?.id ?? null);
-    this.profilData = {
-      adresse:     this.profil.adresse    || '',
-      telephone:   this.profil.telephone  || '',
-      photoProfil: this.profil.photoProfil || null
-    };
-    this.photoPreview = this.profil.photoProfil || null;
 
     if (this.userData.villeBaseId) {
       this.agencesFiltrees = this.agences.filter(a => a.villeId === this.userData.villeBaseId);
     }
   }
 
-  onFileSelected(event: any) {
-    const file = event.target.files[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = (e: any) => {
-        this.photoPreview = e.target.result;
-        this.profilData.photoProfil = e.target.result;
-      };
-      reader.readAsDataURL(file);
-    }
-  }
-
   submit() {
-    if (!this.profil) return;
+    if (!this.utilisateur) return;
     this.errorMessage = '';
 
-    if (!this.userData.username?.trim() || !this.userData.fullName?.trim()) {
-      this.errorMessage = 'Veuillez remplir le nom complet et le nom d\'utilisateur.';
+    if (!this.userData.telephone?.trim() || !this.userData.fullName?.trim()) {
+      this.errorMessage = 'Veuillez remplir le nom complet et le numéro de téléphone.';
       return;
     }
 
-    const roleChoisi = this.rolesList.find(r => r.id === this.selectedRoleId);
-    if (!roleChoisi) {
-      this.errorMessage = 'Veuillez sélectionner un rôle.';
+    if (!this.userData.roles || this.userData.roles.length === 0) {
+      this.errorMessage = 'Veuillez sélectionner au moins un rôle.';
       return;
     }
 
@@ -153,35 +137,24 @@ export class ModalEditUser implements OnInit, OnChanges {
 
     const userPayload: UserUpdateDTO = {
       fullName:        this.userData.fullName,
-      username:        this.userData.username,
-      roles:           roleChoisi,
-      enable:          this.userData.enable,
+      telephone:       this.userData.telephone,
+      email:           this.userData.email || undefined,
+      roles:           this.userData.roles,
       villeBaseId:     this.userData.villeBaseId     || undefined,
       villeActuelleId: this.userData.villeActuelleId || undefined,
       agenceId:        this.userData.agenceId        || undefined
     };
 
-    this.userService.updateUser(this.profil.user.publicId, userPayload).subscribe({
-      next: (user) => this.updateProfil(user),
+    if (this.userData.password?.trim()) {
+      userPayload.password = this.userData.password.trim();
+    }
+
+    this.userService.updateUser(this.utilisateur.publicId, userPayload).subscribe({
+      next: (user) => { this.isLoading = false; this.success.emit(user); },
       error: (err) => {
         this.errorMessage = err?.error?.message || 'Erreur lors de la mise à jour.';
         this.isLoading = false;
       }
-    });
-  }
-
-  private updateProfil(user: any) {
-    const profilPayload: ProfilDTO = {
-      userId:      this.profil!.user.id,
-      photoProfil: this.profilData.photoProfil || null,
-      telephone:   this.profilData.telephone   || '',
-      nomComplet:  this.userData.fullName,
-      adresse:     this.profilData.adresse     || ''
-    };
-
-    this.userService.updateProfil(this.profil!.user.id, profilPayload).subscribe({
-      next: (profil) => { this.isLoading = false; this.success.emit({ user, profil }); },
-      error: () => { this.isLoading = false; this.fermer.emit(); }
     });
   }
 }

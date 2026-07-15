@@ -3,8 +3,9 @@ import { Injectable } from '@angular/core';
 export interface UserContext {
   id: string;
   publicId: string;
-  username: string;
+  telephone: string;
   fullName: string;
+  roles: string[];
   role: string;
   agenceId:  string | null;
   agenceNom: string | null;
@@ -23,16 +24,26 @@ export class CurrentUserService {
 
   getFullName(): string   { return this.getContext()?.fullName || 'Utilisateur'; }
   getRole(): string       { return this.getContext()?.role     || ''; }
+  getRoles(): string[]    { return this.getContext()?.roles    || []; }
   getVilleId(): string | null   { return this.getContext()?.villeId   ?? null; }
   getVilleNom(): string | null  { return this.getContext()?.villeNom  ?? null; }
   getAgenceId(): string | null  { return this.getContext()?.agenceId  ?? null; }
   getAgenceNom(): string | null { return this.getContext()?.agenceNom ?? null; }
 
-  isAdmin(): boolean  { return this.getRole() === 'ROLE_ADMIN'  || this.getRole() === 'ADMIN'; }
-  isAgent(): boolean  { return this.getRole() === 'ROLE_AGENT_ACCUEIL' || this.getRole() === 'AGENT_ACCUEIL'; }
+  hasRole(role: string): boolean {
+    const target = role.toUpperCase();
+    return this.getRoles().some(r => r.toUpperCase() === target || r.toUpperCase() === `ROLE_${target}`);
+  }
 
-  /** Retourne true si l'utilisateur doit voir toutes les agences */
-  isGlobalView(): boolean { return this.isAdmin(); }
+  isSuperAdmin(): boolean   { return this.hasRole('SUPER_ADMIN'); }
+  isAdminAgence(): boolean  { return this.hasRole('ADMIN_AGENCE'); }
+  isAgent(): boolean        { return this.hasRole('AGENT_ACCUEIL'); }
+
+  /** Un SUPER_ADMIN ou un ADMIN_AGENCE peut gérer les comptes utilisateurs */
+  peutGererComptes(): boolean { return this.isSuperAdmin() || this.isAdminAgence(); }
+
+  /** Retourne true si l'utilisateur doit voir toutes les agences (pas seulement la sienne) */
+  isGlobalView(): boolean { return this.isSuperAdmin(); }
 
   /** Retourne la première lettre du prénom pour l'avatar */
   getInitiale(): string {

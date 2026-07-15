@@ -1,6 +1,7 @@
 import { Component, OnInit, Output, EventEmitter, HostListener, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router, RouterModule } from '@angular/router';
+import { AuthService } from '../../../core/services/auth.service';
 
 @Component({
   selector: 'app-sidebar',
@@ -15,6 +16,7 @@ export class Sidebar implements OnInit {
   isOpen: boolean = false; // Fermé par défaut sur mobile
 
   private router = inject(Router);
+  private authService = inject(AuthService);
 
   @Output() sidebarToggled = new EventEmitter<boolean>();
 
@@ -48,18 +50,16 @@ export class Sidebar implements OnInit {
   }
 
   getRole(): boolean {
-    this.userRole = localStorage.getItem('userRole') || '';
-    return this.userRole === 'ADMIN' || this.userRole === 'SUPER_ADMIN';
+    this.userRole = this.authService.getRole() || '';
+    return this.isAdmin();
   }
 
   isAdmin(): boolean {
-    const role = localStorage.getItem('userRole') || '';
-    return role === 'ADMIN' || role === 'ROLE_ADMIN';
+    return this.authService.hasRole('SUPER_ADMIN') || this.authService.hasRole('ADMIN_AGENCE');
   }
 
   logout() {
-    // Exemple : effacer le token et rediriger vers la page de connexion
-    localStorage.removeItem('token');
-    this.router.navigate(['/connexion']);
+    this.authService.logout();
+    this.router.navigate(['/login']);
   }
 }

@@ -2,13 +2,23 @@ import { HttpInterceptorFn, HttpErrorResponse, HttpRequest } from '@angular/comm
 import { inject } from '@angular/core';
 import { AuthService } from '../services/auth.service';
 import { Router } from '@angular/router';
-import { catchError, switchMap, throwError } from 'rxjs';
+import { catchError, throwError } from 'rxjs';
+import { environment } from '../../../environments/environment';
+
+// Routes publiques exactes (pas de sous-chaîne : "/api/v1/users/{id}/reset-password" ne doit PAS matcher "/reset-password")
+const ROUTES_PUBLIQUES = [
+  `${environment.baseUrl}/login`,
+  `${environment.baseUrl}/register`,
+  `${environment.baseUrl}/forgot-password`,
+  `${environment.baseUrl}/reset-password`,
+];
 
 export const jwtInterceptor: HttpInterceptorFn = (req, next) => {
   const authService = inject(AuthService);
   const router = inject(Router);
 
-  if (req.url.includes('/login') || req.url.includes('/token/refresh')) {
+  const urlSansQuery = req.url.split('?')[0];
+  if (ROUTES_PUBLIQUES.includes(urlSansQuery)) {
     return next(req);
   }
 
@@ -17,23 +27,16 @@ export const jwtInterceptor: HttpInterceptorFn = (req, next) => {
   return next(reqAvecToken).pipe(
     catchError((error: HttpErrorResponse) => {
 
-      // Seulement 401 déclenche le refresh — pas le 403
-      // 403 = droits insuffisants (pas un token expiré)
-      if (error.status === 401 && authService.getRefreshToken()) {
-        return authService.rafraichirToken().pipe(
-          switchMap(res => next(ajouterToken(req, res.access))),
-          catchError(refreshError => {
-            authService.logout();
-            router.navigate(['/login']);
-            return throwError(() => refreshError);
-          })
-        );
+      // 401 = token absent/expiré/invalide — pas de flux de refresh côté backend, on déconnecte
+      if (error.status === 401) {
+        authService.logout();
+        router.navigate(['/login']);
+        return throwError(() => error);
       }
 
-      // 403 = on logue mais on NE déconnecte PAS
+      // 403 = droits insuffisants (pas un problème de token) — on logue mais on NE déconnecte PAS
       if (error.status === 403) {
-        console.warn(` Accès refusé (403) sur ${req.url} — droits insuffisants.`);
-        // On retourne l'erreur sans déconnecter
+        console.warn(`Accès refusé (403) sur ${req.url} — droits insuffisants.`);
         return throwError(() => error);
       }
 
