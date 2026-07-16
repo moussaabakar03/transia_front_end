@@ -1,8 +1,14 @@
 import { Component, OnInit, Output, EventEmitter } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { forkJoin } from 'rxjs';
 import { UserService } from '../../../core/services/user-service';
-import { ProfilDTO, UserCreateDTO, RoleDTO } from '../../models/users';
+import { VilleService } from '../../../core/services/transport/ville-service';
+import { AgenceService } from '../../../core/services/agence.service';
+import { CurrentUserService } from '../../../core/services/current-user.service';
+import { RoleDTO, RoleName, UserCreateDTO } from '../../models/users';
+import { Ville } from '../../models/ville';
+import { Agence } from '../../models/agence.model';
 
 @Component({
   selector: 'app-modal-enregistrement-user',
@@ -11,113 +17,130 @@ import { ProfilDTO, UserCreateDTO, RoleDTO } from '../../models/users';
   styleUrl: './modal-enregistrement-user.scss',
 })
 export class ModalEnregistrementUser implements OnInit {
-  @Output() fermer = new EventEmitter<void>();
+  @Output() fermer  = new EventEmitter<void>();
   @Output() success = new EventEmitter<any>();
 
   userData: UserCreateDTO = {
-    fullName: '',
-    username: '',
-    password: '',
-    roles: null,
-    enable: true
+    fullName: '', telephone: '', email: '', password: '',
+    roles: [], villeBaseId: '', villeActuelleId: '', agenceId: ''
   };
 
-  rolesList: RoleDTO[] = [];
-  selectedRoleId: number | null = null;
+  rolesList:  RoleDTO[]  = [];
+  villes:     Ville[]    = [];
+  agences:    Agence[]   = [];
+  agencesFiltrees: Agence[] = [];
 
-  profilData: Partial<ProfilDTO> = {
-    adresse: '',
-    telephone: '',
-    photoProfil: null
-  };
+  isLoading        = false;
+  isLoadingRoles   = false;
+  isLoadingVilles  = false;
+  errorMessage = '';
 
-  isLoading = false;
-  isLoadingRoles = false;
-  photoPreview: string | null = null;
-
-  constructor(private userService: UserService) {}
+  constructor(
+    private userService: UserService,
+    private villeService: VilleService,
+    private agenceService: AgenceService,
+    private currentUser: CurrentUserService
+  ) {}
 
   ngOnInit(): void {
-    this.isLoadingRoles = true;
-    this.userService.getAllRoles().subscribe({
-      next: (roles) => {
-        this.rolesList = roles;
-        if (roles.length > 0) this.selectedRoleId = roles[0].id;
-        this.isLoadingRoles = false;
+    this.isLoadingRoles  = true;
+    this.isLoadingVilles = true;
+
+    forkJoin({
+      roles:   this.userService.getAllRoles(),
+      villes:  this.villeService.getAllVilles(),
+      agences: this.agenceService.getAll()
+    }).subscribe({
+      next: r => {
+        this.rolesList  = r.roles;
+        this.villes     = r.villes || [];
+        this.agences    = r.agences || [];
+        this.agencesFiltrees = this.agences;
+        this.isLoadingRoles  = false;
+        this.isLoadingVilles = false;
       },
-      error: (err) => {
-        console.error('Erreur chargement rôles', err);
-        this.isLoadingRoles = false;
+      error: () => {
+        this.isLoadingRoles  = false;
+        this.isLoadingVilles = false;
       }
     });
   }
 
-  onFileSelected(event: any) {
-    const file = event.target.files[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = (e: any) => {
-        this.photoPreview = e.target.result;
-        this.profilData.photoProfil = e.target.result;
-      };
-      reader.readAsDataURL(file);
+  /** Un ADMIN_AGENCE ne peut pas créer un SUPER_ADMIN ni un autre ADMIN_AGENCE */
+  get rolesSelectionnables(): RoleDTO[] {
+    if (this.currentUser.isSuperAdmin()) return this.rolesList;
+    return this.rolesList.filter(r => r.name !== 'SUPER_ADMIN' && r.name !== 'ADMIN_AGENCE');
+  }
+
+  get isFieldAgent(): boolean {
+    return this.userData.roles.includes('CHAUFFEUR') || this.userData.roles.includes('LIVREUR');
+  }
+
+  get isAgence(): boolean {
+    return this.userData.roles.includes('AGENT_ACCUEIL') || this.userData.roles.includes('ADMIN_AGENCE');
+  }
+
+  get needsVille(): boolean {
+    return this.isFieldAgent || this.isAgence;
+  }
+
+  isRoleSelected(name: RoleName): boolean {
+    return this.userData.roles.includes(name);
+  }
+
+  toggleRole(name: RoleName): void {
+    if (this.isRoleSelected(name)) {
+      this.userData.roles = this.userData.roles.filter(r => r !== name);
+    } else {
+      this.userData.roles = [...this.userData.roles, name];
     }
+    this.userData.villeBaseId     = '';
+    this.userData.villeActuelleId = '';
+    this.userData.agenceId        = '';
+    this.agencesFiltrees = this.agences;
+  }
+
+  onVilleBaseChange(): void {
+    if (!this.userData.villeBaseId) { this.agencesFiltrees = this.agences; return; }
+    this.agencesFiltrees = this.agences.filter(a => a.villeId === this.userData.villeBaseId);
+    this.userData.agenceId = '';
   }
 
   submit() {
-    if (!this.userData.username || !this.userData.password || !this.userData.fullName) {
-      alert('Veuillez remplir tous les champs obligatoires (nom, identifiant, mot de passe)');
+    this.errorMessage = '';
+
+    if (!this.userData.telephone?.trim() || !this.userData.password?.trim() || !this.userData.fullName?.trim()) {
+      this.errorMessage = 'Veuillez remplir tous les champs obligatoires (nom, téléphone, mot de passe).';
       return;
     }
 
-    const roleChoisi = this.rolesList.find(r => r.id === this.selectedRoleId);
-    if (!roleChoisi) {
-      alert('Veuillez sélectionner un rôle');
+    if (!this.userData.roles || this.userData.roles.length === 0) {
+      this.errorMessage = 'Veuillez sélectionner au moins un rôle.';
       return;
     }
 
-    this.userData.roles = roleChoisi;
     this.isLoading = true;
 
     this.userService.createUser(this.userData).subscribe({
-      next: (user) => this.createProfil(user.id, user),
-      error: (err) => {
-        console.error('Erreur création utilisateur', err);
-        alert('Erreur lors de la création du compte utilisateur');
+      next: (user) => {
         this.isLoading = false;
-      }
-    });
-  }
-
-  createProfil(userId: number, user: any) {
-    const profilPayload: ProfilDTO = {
-      userId: userId,
-      photoProfil: this.profilData.photoProfil || null,
-      telephone: this.profilData.telephone || '',
-      nomComplet: this.userData.fullName,
-      adresse: this.profilData.adresse || ''
-    };
-
-    this.userService.createProfil(profilPayload).subscribe({
-      next: (profil) => {
-        this.isLoading = false;
-        this.success.emit({ userId, user, profil });
+        this.success.emit(user);
         this.resetForm();
         this.fermer.emit();
       },
       error: (err) => {
-        console.error('Erreur création profil', err);
-        alert('Utilisateur créé mais erreur lors de la création du profil');
+        this.errorMessage = err?.error?.message || 'Erreur lors de la création du compte.';
         this.isLoading = false;
-        this.fermer.emit();
       }
     });
   }
 
   resetForm() {
-    this.userData = { fullName: '', username: '', password: '', roles: null, enable: true };
-    this.selectedRoleId = this.rolesList.length > 0 ? this.rolesList[0].id : null;
-    this.profilData = { adresse: '', telephone: '', photoProfil: null };
-    this.photoPreview = null;
+    this.userData = {
+      fullName: '', telephone: '', email: '', password: '',
+      roles: [], villeBaseId: '', villeActuelleId: '', agenceId: ''
+    };
+    this.errorMessage    = '';
+    this.agencesFiltrees = this.agences;
   }
 }

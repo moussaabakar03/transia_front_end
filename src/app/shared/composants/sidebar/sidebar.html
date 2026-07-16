@@ -4,7 +4,7 @@
 
   <!--  MARQUE / LOGO  -->
   <div class="brand-container">
-    <img src="images/logo-symbole.jpeg" alt="Logo TransIa" class="logo-icon">
+    <img src="images/logo-symbole.png" alt="Logo TransIa" class="logo-icon">
     <div class="brand-text">
       <div class="brand-name">
         <span class="big-letter">T</span><span>R</span><span>A</span><span>N</span>
@@ -20,56 +20,69 @@
   <!--  MENU PRINCIPAL  -->
   <nav class="menu-section">
 
-    <!-- Liens Dashboard & Formulaires (Dashboard 2) -->
+    <!-- Dashboard -->
     <a routerLink="/tableau-de-bord" routerLinkActive="active" class="menu-link" (click)="close()">
       <i class="material-icons">home</i>
       <span>TABLEAU DE BORD</span>
     </a>
-    <a routerLink="/formulaires" routerLinkActive="active" class="menu-link" (click)="close()">
-      <i class="material-icons">description</i>
-      <span>FORMULAIRES DÉPLOYÉS</span>
-    </a>
-    <a routerLink="/gestion-comptes" *ngIf="getRole()" routerLinkActive="active" class="menu-link" (click)="close()">
-      <i class="material-icons">people</i>
-      <span>GESTION DES COMPTES</span>
-    </a>
 
     <!-- Séparateur -->
     <div class="menu-separator"></div>
 
-    <!--  RUBRIQUES TRANSPORT (Dashboard 1)  -->
-    <a routerLink="/vehicules/liste" routerLinkActive="active" class="menu-link" (click)="close()">
-      <i class="material-icons">directions_car</i>
-      <span>VÉHICULE</span>
-    </a>
-    <a routerLink="/trajets/liste" routerLinkActive="active" class="menu-link" (click)="close()">
-      <i class="material-icons">alt_route</i>
-      <span>TRAJET</span>
-    </a>
-    
+    <!--  TRANSPORT  -->
     <a routerLink="/villes" routerLinkActive="active" class="menu-link" (click)="close()">
       <i class="material-icons">location_city</i>
-      <span>VILLE</span>
+      <span>VILLES</span>
     </a>
-    <a routerLink="/reservations/liste" routerLinkActive="active" class="menu-link" (click)="close()">
+    <a routerLink="/vehicules" routerLinkActive="active" class="menu-link" (click)="close()">
+      <i class="material-icons">directions_bus</i>
+      <span>VÉHICULES</span>
+    </a>
+    <a routerLink="/trajets" routerLinkActive="active" class="menu-link" (click)="close()">
+      <i class="material-icons">alt_route</i>
+      <span>TRAJETS</span>
+    </a>
+    <a routerLink="/reservations" routerLinkActive="active" class="menu-link" (click)="close()">
       <i class="material-icons">event_seat</i>
-      <span>RÉSERVATION</span>
-    </a>
-
-    <!--  UTILISATEURS & FEEDBACKS  -->
-    <a routerLink="/gestion-comptes" routerLinkActive="active" class="menu-link" (click)="close()">
-      <i class="material-icons">group</i>
-      <span>UTILISATEURS</span>
-    </a>
-    <a routerLink="/feedbacks/liste" routerLinkActive="active" class="menu-link" (click)="close()">
-      <i class="material-icons">feedback</i>
-      <span>FEEDBACKS</span>
+      <span>RÉSERVATIONS</span>
     </a>
 
     <!-- Séparateur -->
     <div class="menu-separator"></div>
 
-    <!--  AUTH / DÉCONNEXION  -->
+    <!--  COLIS & LIVRAISONS  -->
+    <a routerLink="/colis" routerLinkActive="active" class="menu-link" (click)="close()">
+      <i class="material-icons">inventory_2</i>
+      <span>GESTION DES COLIS</span>
+    </a>
+    <a routerLink="/tournees" routerLinkActive="active" class="menu-link" (click)="close()">
+      <i class="material-icons">local_shipping</i>
+      <span>TOURNÉES</span>
+    </a>
+
+    <!-- Séparateur -->
+    <div class="menu-separator"></div>
+
+    <!--  ADMIN UNIQUEMENT  -->
+    @if (isAdmin()) {
+      <a routerLink="/agences" routerLinkActive="active" class="menu-link" (click)="close()">
+        <i class="material-icons">business</i>
+        <span>AGENCES</span>
+      </a>
+      <a routerLink="/gestion-comptes" routerLinkActive="active" class="menu-link" (click)="close()">
+        <i class="material-icons">people</i>
+        <span>GESTION DES COMPTES</span>
+      </a>
+      <a routerLink="/feedbacks" routerLinkActive="active" class="menu-link" (click)="close()">
+        <i class="material-icons">feedback</i>
+        <span>FEEDBACKS</span>
+      </a>
+    }
+
+    <!-- Séparateur -->
+    <div class="menu-separator"></div>
+
+    <!--  DÉCONNEXION  -->
     <a (click)="logout(); close()" class="menu-link logout-link">
       <i class="material-icons">logout</i>
       <span>DÉCONNEXION</span>

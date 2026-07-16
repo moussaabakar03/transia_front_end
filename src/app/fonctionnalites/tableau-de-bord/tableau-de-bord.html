@@ -1,59 +1,272 @@
-<div class="dashboard-wrapper">
-  
-  <!-- Navigation Gauche -->
+<div class="dashboard-layout">
   <app-sidebar></app-sidebar>
 
-  <!-- Contenu Principal -->
-  <div class="main-content">
-    <app-header (actionCreer)="ouvrirSelection()"></app-header>
-    
-    <div class="content-body">
-      
-      <!-- En-tête -->
-      <div class="dashboard-action-bar">
-        <div class="welcome-text">
-          <div class="page-eyebrow">TransIa · Plateforme de Pilotage</div>
-          <h1>Tableau de bord général</h1>
-          <p>Supervisez vos flux de transport en temps réel.</p>
+  <div class="main-content-area">
+    <app-header></app-header>
+
+    <div class="page-body">
+
+      <!-- ══ BANNIÈRE UTILISATEUR ══════════════════════════ -->
+      <div class="welcome-banner">
+        <div class="welcome-left">
+          <div class="welcome-avatar">{{ getInitiale() }}</div>
+          <div class="welcome-info">
+            <p class="welcome-eyebrow">
+              {{ isAdmin ? 'Vue globale — toutes agences' : 'Tableau de bord · ' + (agenceNom || villeNom || 'Agence') }}
+            </p>
+            <!-- <h1 class="welcome-title">Bonjour, {{ fullName }} 👋</h1> -->
+            <h1 class="welcome-title">Bonjour, {{ fullName }}</h1>
+            <p class="welcome-sub">
+              {{ today | date:'EEEE d MMMM yyyy':'':'fr' }}
+              @if (!isAdmin && villeNom) {
+                <span class="ville-pill">
+                  <span class="material-icons">location_on</span>{{ villeNom }}
+                </span>
+              }
+            </p>
+          </div>
         </div>
-        <button type="button" class="btn-create-form" (click)="ouvrirPopUp()">
-          <span class="material-icons">add</span>
-          CRÉER UN FORMULAIRE
+        <button class="btn-refresh" (click)="chargerDonnees()" [disabled]="isLoading" title="Actualiser">
+          <span class="material-icons" [class.spin]="isLoading">refresh</span>
+          Actualiser
         </button>
       </div>
 
-      <!-- État de chargement -->
-      @if (isLoadingTransport) {
-        <div class="flex flex-col items-center justify-center py-20 text-slate-400 gap-3 bg-white border border-slate-100 rounded-3xl shadow-sm">
-          <span class="material-icons animate-spin text-4xl text-blue-500">sync</span>
-          <p class="text-sm font-bold uppercase tracking-wider">Agrégation des données de flux...</p>
+      <!-- ══ CHARGEMENT ════════════════════════════════════ -->
+      @if (isLoading) {
+        <div class="loading-state">
+          <div class="spinner"></div>
+          <p>Agrégation des données{{ isAdmin ? '' : ' de votre agence' }}...</p>
         </div>
-      } @else {
-        
-        <!-- CARTES DES KPIs TRANSPORT -->
-        <app-stats-cards [kpi]="kpiData"></app-stats-cards>
+      }
 
-        <!-- TABLEAUX : PROCHAINS DÉPARTS + DERNIÈRES RÉSERVATIONS -->
-        <div class="mt-6">
-          <app-reservations-recentes 
-            [triggerRefresh]="refreshSignal" 
-            [reservations]="reservations"
-            [trajets]="trajets"
-            [prochainsDeparts]="prochainsDeparts"
-            [placesDisponibles]="placesDisponiblesParTrajet"
-            (clonerApercu)="ouvrirApercu($event)">
-          </app-reservations-recentes>
+      @if (!isLoading) {
+
+        <!-- ══ KPIs TRANSPORT (ligne 1) ══════════════════ -->
+        <div class="section-label">
+          <span class="material-icons">directions_bus</span> Transport
+        </div>
+        <div class="kpi-grid">
+
+          <div class="kpi-card kpi-blue">
+            <div class="kpi-icon-wrap"><span class="material-icons">departure_board</span></div>
+            <div class="kpi-body">
+              <span class="kpi-value">{{ departsAujourdhui }}</span>
+              <span class="kpi-label">Départs aujourd'hui</span>
+            </div>
+            <div class="kpi-trend trend-up">
+              <span class="material-icons">arrow_upward</span>
+            </div>
+          </div>
+
+          <div class="kpi-card kpi-amber">
+            <div class="kpi-icon-wrap"><span class="material-icons">pending_actions</span></div>
+            <div class="kpi-body">
+              <span class="kpi-value">{{ reservationsEnAttente }}</span>
+              <span class="kpi-label">Réservations en attente</span>
+            </div>
+            <div class="kpi-trend trend-neutral">
+              <span class="material-icons">horizontal_rule</span>
+            </div>
+          </div>
+
+          <div class="kpi-card kpi-indigo">
+            <div class="kpi-icon-wrap"><span class="material-icons">airline_seat_recline_normal</span></div>
+            <div class="kpi-body">
+              <span class="kpi-value">{{ tauxOccupation }}%</span>
+              <span class="kpi-label">Taux d'occupation</span>
+            </div>
+            <div class="kpi-bar-wrap">
+              <div class="kpi-bar" [style.width.%]="tauxOccupation"></div>
+            </div>
+          </div>
+
+          <div class="kpi-card kpi-emerald">
+            <div class="kpi-icon-wrap"><span class="material-icons">payments</span></div>
+            <div class="kpi-body">
+              <span class="kpi-value">{{ revenusMois | number:'1.0-0' }}</span>
+              <span class="kpi-label">Revenus ce mois (FCFA)</span>
+            </div>
+            <div class="kpi-trend trend-up">
+              <span class="material-icons">trending_up</span>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- ══ KPIs COLIS (ligne 2) ═══════════════════════ -->
+        <div class="section-label">
+          <span class="material-icons">inventory_2</span> Colis
+        </div>
+        <div class="kpi-grid kpi-grid-3">
+
+          <div class="kpi-card kpi-orange">
+            <div class="kpi-icon-wrap"><span class="material-icons">hourglass_top</span></div>
+            <div class="kpi-body">
+              <span class="kpi-value">{{ colisEnAttente }}</span>
+              <span class="kpi-label">En attente de collecte</span>
+            </div>
+          </div>
+
+          <div class="kpi-card kpi-cyan">
+            <div class="kpi-icon-wrap"><span class="material-icons">local_shipping</span></div>
+            <div class="kpi-body">
+              <span class="kpi-value">{{ colisEnTransit }}</span>
+              <span class="kpi-label">En transit</span>
+            </div>
+          </div>
+
+          <div class="kpi-card kpi-green">
+            <div class="kpi-icon-wrap"><span class="material-icons">task_alt</span></div>
+            <div class="kpi-body">
+              <span class="kpi-value">{{ colisLivres }}</span>
+              <span class="kpi-label">Livrés</span>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- ══ TABLEAUX ════════════════════════════════════ -->
+        <div class="tables-grid">
+
+          <!-- Prochains départs -->
+          <div class="table-card">
+            <div class="table-card-header">
+              <div class="table-card-title">
+                <span class="material-icons">schedule</span>
+                Prochains départs
+              </div>
+              <span class="table-count-badge">{{ prochainsDeparts.length }}</span>
+            </div>
+            <table class="dash-table">
+              <thead>
+                <tr>
+                  <th>Ligne</th>
+                  <th>Date</th>
+                  <th>Heure</th>
+                  <th>Bus</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (t of prochainsDeparts; track t.id) {
+                  <tr>
+                    <td>
+                      <span class="route-label">
+                        {{ t.villeDepart.nomVille }} → {{ t.villeArrivee.nomVille }}
+                      </span>
+                    </td>
+                    <td class="text-muted">{{ t.dateDepart | date:'dd/MM' }}</td>
+                    <td><span class="time-chip">{{ t.heureDepart }}</span></td>
+                    <td class="text-muted">{{ t.vehicule.immatriculation || '—' }}</td>
+                  </tr>
+                } @empty {
+                  <tr>
+                    <td colspan="4" class="empty-cell">
+                      <span class="material-icons">event_busy</span> Aucun départ prévu
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+
+          <!-- Réservations récentes -->
+          <div class="table-card">
+            <div class="table-card-header">
+              <div class="table-card-title">
+                <span class="material-icons">receipt_long</span>
+                Réservations récentes
+              </div>
+              <span class="table-count-badge">{{ reservationsRecentes.length }}</span>
+            </div>
+            <table class="dash-table">
+              <thead>
+                <tr>
+                  <th>Client</th>
+                  <th>Trajet</th>
+                  <th>Places</th>
+                  <th>Statut</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (r of reservationsRecentes; track r.id) {
+                  <tr>
+                    <td>
+                      <div class="client-cell">
+                        <span class="client-avatar">{{ r.nomResponsable?.charAt(0) | uppercase }}</span>
+                        <span>{{ r.nomResponsable }}</span>
+                      </div>
+                    </td>
+                    <td class="text-muted text-sm">{{ getTrajetLabel(r.trajetId) }}</td>
+                    <td class="text-center fw-bold">{{ r.nombrePlace }}</td>
+                    <td>
+                      <span class="statut-dot"
+                            [class.dot-green]="r.statut === 'CONFIRMEE'"
+                            [class.dot-amber]="r.statut === 'EN_ATTENTE'"
+                            [class.dot-red]="r.statut === 'ANNULEE'">
+                        {{ r.statut === 'CONFIRMEE' ? 'Confirmée' : r.statut === 'EN_ATTENTE' ? 'En attente' : 'Annulée' }}
+                      </span>
+                    </td>
+                  </tr>
+                } @empty {
+                  <tr>
+                    <td colspan="4" class="empty-cell">
+                      <span class="material-icons">inbox</span> Aucune réservation
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+
+          <!-- Colis récents -->
+          <div class="table-card table-card-full">
+            <div class="table-card-header">
+              <div class="table-card-title">
+                <span class="material-icons">inventory_2</span>
+                Colis récents
+              </div>
+              <span class="table-count-badge">{{ colisRecents.length }}</span>
+            </div>
+            <table class="dash-table">
+              <thead>
+                <tr>
+                  <th>N° Suivi</th>
+                  <th>Destinataire</th>
+                  <th>Trajet</th>
+                  <th>Poids</th>
+                  <th>Statut</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (c of colisRecents; track c.id) {
+                  <tr>
+                    <td><span class="tracking-chip">{{ c.numeroSuivi || '—' }}</span></td>
+                    <td class="fw-medium">{{ c.nomDestinataire }}</td>
+                    <td class="text-muted text-sm">
+                      {{ c.villeDepartNom || '?' }} → {{ c.villeArriveeNom || '?' }}
+                    </td>
+                    <td class="text-muted">{{ c.poids }} kg</td>
+                    <td>
+                      <span class="statut-badge {{ getStatutColisClass(c.statut) }}">
+                        {{ getStatutColisLabel(c.statut) }}
+                      </span>
+                    </td>
+                  </tr>
+                } @empty {
+                  <tr>
+                    <td colspan="5" class="empty-cell">
+                      <span class="material-icons">inventory_2</span> Aucun colis
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+
         </div>
 
       }
     </div>
   </div>
 </div>
-
-<!-- Modale d'aperçu -->
-@if (projetSelectionne) {
-  <app-modale-apercu 
-    [projet]="projetSelectionne" 
-    (fermerModale)="fermerApercu()">
-  </app-modale-apercu>
-}

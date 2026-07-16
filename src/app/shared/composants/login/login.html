@@ -65,8 +65,8 @@
       <div class="login-card">
 
         <div class="card-top">
-          <h1>Salut !</h1>
-          <p>Accédez à votre espace de gestion.</p>
+          <h1>Connexion</h1>
+          <p>Accédez à votre compte.</p>
         </div>
 
         @if (erreur) {
@@ -79,15 +79,15 @@
         <div class="form-fields">
 
           <div class="field-wrap">
-            <label>Identifiant</label>
+            <label>Numéro de téléphone</label>
             <div class="input-box">
-              <span class="material-icons input-icon">person_outline</span>
-              <input type="text"
-                     [(ngModel)]="username"
-                     name="username"
-                     placeholder="Votre nom d'utilisateur"
+              <span class="material-icons input-icon" style = "margin-right: -150px;">phone_outlined</span>
+              <input type="tel"
+                     [(ngModel)]="telephone"
+                     name="telephone"
+                     placeholder="Votre numéro de téléphone"
                      (keyup.enter)="seConnecter()"
-                     autocomplete="username" />
+                     autocomplete="tel" />
             </div>
           </div>
 

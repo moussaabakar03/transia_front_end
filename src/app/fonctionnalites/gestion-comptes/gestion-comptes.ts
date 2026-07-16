@@ -8,7 +8,7 @@ import { ModalEnregistrementUser } from '../../shared/composants/modal-enregistr
 import { ModalEditUser } from '../../shared/composants/modal-edit-user/modal-edit-user';
 import { ModalDeleteUser } from '../../shared/composants/modal-delete-user/modal-delete-user';
 import { ModalViewProfile } from '../../shared/composants/modal-view-profile/modal-view-profile';
-import { ProfilComplet } from '../../shared/models/users';
+import { UserResponse } from '../../shared/models/users';
 
 @Component({
   selector: 'app-gestion-comptes',
@@ -18,8 +18,8 @@ import { ProfilComplet } from '../../shared/models/users';
   styleUrl: './gestion-comptes.scss'
 })
 export class GestionComptes implements OnInit {
-  // Affichage paginé - maintenant un tableau
-  comptesAffiches: ProfilComplet[] = [];
+  // Affichage paginé
+  comptesAffiches: UserResponse[] = [];
 
   // États des modales
   afficherChoixGlobal: boolean = false;
@@ -29,8 +29,8 @@ export class GestionComptes implements OnInit {
   afficherViewProfile: boolean = false;
 
   // Données éditées/supprimées
-  profilEditer: ProfilComplet | null = null;
-  profilVoir: ProfilComplet | null = null;
+  utilisateurEditer: UserResponse | null = null;
+  utilisateurVoir: UserResponse | null = null;
   userIdDelete: string | null = null;
   userNameDelete: string = '';
   titreViewProfil: string = "Profil Utilisateur";
@@ -44,8 +44,8 @@ export class GestionComptes implements OnInit {
   valeurSaisi: string = '';
 
   // Sources de données
-  tousLesProfils: ProfilComplet[] = [];
-  resultatsFiltres: ProfilComplet[] = [];
+  tousLesUtilisateurs: UserResponse[] = [];
+  resultatsFiltres: UserResponse[] = [];
 
   constructor(private utilisateursService: UserService) {}
 
@@ -54,35 +54,37 @@ export class GestionComptes implements OnInit {
   }
 
   loadUsers(): void {
-    this.utilisateursService.getProfilsComplets().subscribe({
+    this.utilisateursService.getUsers().subscribe({
       next: (data) => {
-        this.tousLesProfils = data;
+        this.tousLesUtilisateurs = data;
         this.resultatsFiltres = [...data];
-        console.log(this.resultatsFiltres);
         this.totalComptes = this.resultatsFiltres.length;
         this.pageActuelle = 1;
         this.appliquerPage();
       },
-      error: (err) => console.error('Erreur chargement profils utilisateurs', err)
+      error: (err) => console.error('Erreur chargement des utilisateurs', err)
     });
   }
 
   filtrerProfils(): void {
     if (!this.valeurSaisi.trim()) {
-      this.resultatsFiltres = [...this.tousLesProfils];
+      this.resultatsFiltres = [...this.tousLesUtilisateurs];
     } else {
       const terme = this.valeurSaisi.toLowerCase().trim();
-      this.resultatsFiltres = this.tousLesProfils.filter(profil =>
-        profil.user.username?.toLowerCase().includes(terme) ||
-        profil.user.fullName?.toLowerCase().includes(terme) ||
-        profil.adresse?.toLowerCase().includes(terme) ||
-        profil.telephone?.includes(terme) ||
-        profil.user.roles.name?.toLowerCase().includes(terme)
+      this.resultatsFiltres = this.tousLesUtilisateurs.filter(u =>
+        u.fullName?.toLowerCase().includes(terme) ||
+        u.telephone?.includes(terme) ||
+        u.email?.toLowerCase().includes(terme) ||
+        u.roles?.some(r => r.name.toLowerCase().includes(terme))
       );
     }
     this.totalComptes = this.resultatsFiltres.length;
     this.pageActuelle = 1;
     this.appliquerPage();
+  }
+
+  rolesLabel(u: UserResponse): string {
+    return (u.roles || []).map(r => r.name).join(', ');
   }
 
   private appliquerPage(): void {
@@ -114,19 +116,13 @@ export class GestionComptes implements OnInit {
   }
 
   suspendreCompte(publicId: string): void {
-    const profil = this.tousLesProfils.find(p => p.user.publicId === publicId);
-    if (!profil) return;
+    const u = this.tousLesUtilisateurs.find(x => x.publicId === publicId);
+    if (!u) return;
 
-    if (confirm(`Voulez-vous suspendre temporairement les accès de ${profil.user.username}?`)) {
-      const payload = {
-        fullName: profil.user.fullName,
-        username: profil.user.username,
-        roles: profil.user.roles,
-        enable: false
-      };
-      this.utilisateursService.updateUser(publicId, payload).subscribe({
+    if (confirm(`Voulez-vous suspendre temporairement les accès de ${u.fullName} ?`)) {
+      this.utilisateursService.suspendreCompte(publicId).subscribe({
         next: () => {
-          alert(`Les droits d'accès de ${profil.user.username} ont été révoqués.`);
+          alert(`Les droits d'accès de ${u.fullName} ont été révoqués.`);
           this.loadUsers();
         },
         error: (err) => {
@@ -138,23 +134,52 @@ export class GestionComptes implements OnInit {
   }
 
   activerCompte(publicId: string): void {
-    const profil = this.tousLesProfils.find(p => p.user.publicId === publicId);
-    if (!profil) return;
+    const u = this.tousLesUtilisateurs.find(x => x.publicId === publicId);
+    if (!u) return;
 
-    const payload = {
-      fullName: profil.user.fullName,
-      username: profil.user.username,
-      roles: profil.user.roles,
-      enable: true
-    };
-    this.utilisateursService.updateUser(publicId, payload).subscribe({
+    this.utilisateursService.activerCompte(publicId).subscribe({
       next: () => {
-        alert(`Le compte de ${profil.user.username} a été réactivé.`);
+        alert(`Le compte de ${u.fullName} a été réactivé.`);
         this.loadUsers();
       },
       error: (err) => {
         console.error('Erreur activation compte', err);
         alert('Erreur lors de la réactivation du compte');
+      }
+    });
+  }
+
+  bloquerCompte(publicId: string): void {
+    const u = this.tousLesUtilisateurs.find(x => x.publicId === publicId);
+    if (!u) return;
+
+    if (confirm(`Voulez-vous bloquer le compte de ${u.fullName} ? (sanction, plus fort qu'une suspension)`)) {
+      this.utilisateursService.bloquerCompte(publicId).subscribe({
+        next: () => {
+          alert(`Le compte de ${u.fullName} a été bloqué.`);
+          this.loadUsers();
+        },
+        error: (err) => {
+          console.error('Erreur blocage compte', err);
+          alert('Erreur lors du blocage du compte');
+        }
+      });
+    }
+  }
+
+  reinitialiserMotDePasse(publicId: string): void {
+    const u = this.tousLesUtilisateurs.find(x => x.publicId === publicId);
+    if (!u) return;
+
+    if (!confirm(`Générer un nouveau mot de passe temporaire pour ${u.fullName} ?`)) return;
+
+    this.utilisateursService.reinitialiserMotDePasse(publicId).subscribe({
+      next: (res) => {
+        alert(`Mot de passe temporaire pour ${u.fullName} : ${res.message}\nCommuniquez-le à l'utilisateur de façon sécurisée.`);
+      },
+      error: (err) => {
+        console.error('Erreur réinitialisation mot de passe', err);
+        alert('Erreur lors de la réinitialisation du mot de passe');
       }
     });
   }
@@ -177,14 +202,14 @@ export class GestionComptes implements OnInit {
     this.loadUsers();
   }
 
-  ouvrirEditCompte(profil: ProfilComplet): void {
-    this.profilEditer = profil;
+  ouvrirEditCompte(utilisateur: UserResponse): void {
+    this.utilisateurEditer = utilisateur;
     this.afficherEditCompte = true;
   }
 
   fermerEditCompte(): void {
     this.afficherEditCompte = false;
-    this.profilEditer = null;
+    this.utilisateurEditer = null;
   }
 
   onEditSuccess(): void {
@@ -193,14 +218,14 @@ export class GestionComptes implements OnInit {
     this.loadUsers();
   }
 
-  ouvrirViewProfile(profil: ProfilComplet): void {
-    this.profilVoir = profil;
+  ouvrirViewProfile(utilisateur: UserResponse): void {
+    this.utilisateurVoir = utilisateur;
     this.afficherViewProfile = true;
   }
 
   fermerViewProfile(): void {
     this.afficherViewProfile = false;
-    this.profilVoir = null;
+    this.utilisateurVoir = null;
   }
 
   ouvrirDeleteCompte(publicId: string, userName: string): void {

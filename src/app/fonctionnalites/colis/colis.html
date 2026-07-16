@@ -1,0 +1,532 @@
+<div class="dashboard-layout">
+  <app-sidebar></app-sidebar>
+
+  <div class="main-content-area">
+    <app-header (actionCreer)="openCreate()"></app-header>
+
+    <div class="page-body">
+
+      <!-- ── En-tête ── -->
+      <div class="dashboard-action-bar">
+        <div class="welcome-text">
+          <h1>Gestion des Colis</h1>
+          <p>Suivez et gérez tous les envois inter-villes et livraisons à domicile</p>
+        </div>
+        <button class="btn-blue-action-local" (click)="openCreate()">
+          <span class="material-icons">add</span>
+          NOUVEAU COLIS
+        </button>
+      </div>
+
+      <!-- ── Barre de recherche + filtres ── -->
+      <div class="search-bar">
+        <span class="material-icons">search</span>
+        <input type="text" placeholder="Rechercher par destinataire, n° suivi, ville..."
+               [(ngModel)]="searchTerm" (input)="applyFilters()" />
+        <select class="filter-select" [(ngModel)]="selectedStatut" (change)="applyFilters()">
+          <option value="">Tous les statuts</option>
+          <option [value]="StatutColis.EN_ATTENTE_COLLECTE">En attente</option>
+          <option [value]="StatutColis.PRIS_EN_CHARGE">Pris en charge</option>
+          <option [value]="StatutColis.COLLECTE_EFFECTUEE">Collecté</option>
+          <option [value]="StatutColis.EN_COURS">En transit</option>
+          <option [value]="StatutColis.LIVRE">Livré</option>
+          <option [value]="StatutColis.ANNULE">Annulé</option>
+        </select>
+        <span class="count-badge">{{ filteredColis.length }} résultat(s)</span>
+        <button class="btn-refresh" (click)="loadAll()" title="Actualiser">
+          <span class="material-icons">refresh</span>
+        </button>
+      </div>
+
+      <!-- ── Chargement ── -->
+      <div *ngIf="isLoading" class="loading-state">
+        <div class="spinner"></div>
+        <p>Chargement des colis...</p>
+      </div>
+
+      <!-- ── Erreur ── -->
+      <div *ngIf="errorMessage && !isLoading" class="alert-error">
+        <span class="material-icons">error_outline</span>
+        <span>{{ errorMessage }}</span>
+        <button (click)="loadAll()">Réessayer</button>
+      </div>
+
+      <!-- ── Tableau ── -->
+      <div *ngIf="!isLoading && !errorMessage" class="table-container-colis">
+        <table class="custom-colis-table">
+          <thead>
+            <tr>
+              <th style="width:44px">#</th>
+              <th>N° Suivi</th>
+              <th>Trajet</th>
+              <th>Destinataire</th>
+              <th>Poids</th>
+              <th>Mode dépôt</th>
+              <th>Statut</th>
+              <th style="width:200px; text-align:right">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngIf="filteredColis.length === 0">
+              <td colspan="8">
+                <div class="empty-state">
+                  <span class="material-icons">inventory_2</span>
+                  <p>Aucun colis trouvé</p>
+                  <button class="btn-blue-action-local" (click)="openCreate()">
+                    <span class="material-icons">add</span> Nouveau colis
+                  </button>
+                </div>
+              </td>
+            </tr>
+            <tr *ngFor="let c of paginatedColis; let i = index">
+              <td><span class="row-num">{{ (currentPage - 1) * itemsPerPage + i + 1 }}</span></td>
+
+              <td>
+                <span class="tracking-number">{{ c.numeroSuivi || '—' }}</span>
+              </td>
+
+              <td>
+                <div class="route-cell" *ngIf="c.villeDepartNom || c.villeArriveeNom; else noRoute">
+                  <span class="material-icons loc-icon">route</span>
+                  <span>{{ c.villeDepartNom || '?' }} → {{ c.villeArriveeNom || '?' }}</span>
+                </div>
+                <ng-template #noRoute><span class="text-muted-sm">—</span></ng-template>
+              </td>
+
+              <td>
+                <div class="dest-cell">
+                  <span class="fw-medium">{{ c.nomDestinataire }}</span>
+                  <span class="text-muted-sm">{{ c.telephoneDestinataire }}</span>
+                </div>
+              </td>
+
+              <td>
+                <span class="poids-chip">{{ c.poids }} kg</span>
+              </td>
+
+              <td>
+                <span class="mode-chip">{{ getModeDepotLabel(c.modeDepot) }}</span>
+              </td>
+
+              <td>
+                <span class="statut-badge {{ getStatutConfig(c.statut).css }}">
+                  {{ getStatutConfig(c.statut).label }}
+                </span>
+              </td>
+
+              <td style="text-align:right">
+                <div class="actions-wrapper">
+                  <button class="btn-table-action view"    (click)="openView(c)"  title="Détails"><span class="material-icons">visibility</span></button>
+                  <button class="btn-table-action edit"    (click)="openEdit(c)"  title="Modifier"  *ngIf="canEdit(c)"><span class="material-icons">edit</span></button>
+                  <button class="btn-table-action assign"  (click)="openAssigner(c)" title="Assigner livreur" *ngIf="canAssign(c)"><span class="material-icons">person_add</span></button>
+                  <button class="btn-table-action collect" (click)="collecter(c)" title="Marquer collecté" *ngIf="canCollect(c)"><span class="material-icons">check_circle</span></button>
+                  <button class="btn-table-action deliver" (click)="livrer(c)"    title="Marquer livré"    *ngIf="canDeliver(c)"><span class="material-icons">local_shipping</span></button>
+                  <button class="btn-table-action delete"  (click)="annuler(c)"   title="Annuler"          *ngIf="canCancel(c)"><span class="material-icons">cancel</span></button>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+
+        <!-- Pagination -->
+        <div *ngIf="filteredColis.length > itemsPerPage" class="pagination-container">
+          <div class="pagination-info">
+            Affichage de {{ (currentPage - 1) * itemsPerPage + 1 }} à {{ currentPage * itemsPerPage > filteredColis.length ? filteredColis.length : currentPage * itemsPerPage }} sur {{ filteredColis.length }} colis
+          </div>
+          <div class="pagination-buttons">
+            <button class="btn-pag" (click)="changePage(currentPage - 1)" [disabled]="currentPage === 1">
+              <span class="material-icons">chevron_left</span>
+            </button>
+            <button class="btn-pag" *ngFor="let p of getPaginationPages()"
+                    [class.active]="p === currentPage" (click)="changePage(p)">{{ p }}</button>
+            <button class="btn-pag" (click)="changePage(currentPage + 1)" [disabled]="currentPage === totalPages">
+              <span class="material-icons">chevron_right</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+
+<!-- ═══════════════════════════════════════════════
+     MODAL — CRÉATION / MODIFICATION
+     ═══════════════════════════════════════════════ -->
+<div class="modal-overlay" [class.show]="isModalOpen && (modalMode === ModalMode.AJOUT || modalMode === ModalMode.MODIFICATION)"
+     (click)="closeModal()">
+  <div class="modal-sheet modal-sheet-lg" role="dialog" (click)="$event.stopPropagation()">
+
+    <div class="modal-top-bar">
+      <div class="modal-top-icon">
+        <span class="material-icons">inventory_2</span>
+      </div>
+      <div class="modal-top-title">
+        <h5>{{ modalMode === ModalMode.AJOUT ? 'Nouveau colis' : 'Modifier le colis' }}</h5>
+        <p>{{ modalMode === ModalMode.AJOUT ? 'Enregistrez un envoi inter-villes' : 'Mettez à jour les informations' }}</p>
+      </div>
+      <button class="modal-top-close" (click)="closeModal()"><span class="material-icons">close</span></button>
+    </div>
+
+    <div class="modal-content-area">
+      <div *ngIf="formError"   class="alert-error"><span class="material-icons">error</span> {{ formError }}</div>
+      <div *ngIf="formSuccess" class="alert-success"><span class="material-icons">check_circle</span> {{ formSuccess }}</div>
+
+      <!-- Trajet inter-villes -->
+      <div class="form-section">
+        <div class="form-section-title">
+          <span class="material-icons">route</span> Trajet inter-villes
+        </div>
+        <div class="form-grid">
+          <div class="form-field-half">
+            <label>Ville de départ</label>
+            @if (!isAdmin && agentVilleNom && modalMode === ModalMode.AJOUT) {
+              <div class="ville-fixe-display">
+                <span class="material-icons">flight_takeoff</span>
+                <span>{{ agentVilleNom }}</span>
+                <span class="ville-fixe-badge">Votre agence</span>
+              </div>
+            } @else {
+              <div class="input-wrap">
+                <span class="material-icons input-icon">flight_takeoff</span>
+                <select class="form-select" [(ngModel)]="form.villeDepartId" (ngModelChange)="onVilleDepartChange()">
+                  <option value="">— Sélectionner —</option>
+                  <option *ngFor="let v of villes" [value]="v.id">{{ v.nomVille }}</option>
+                </select>
+              </div>
+            }
+          </div>
+          <div class="form-field-half">
+            <label>Ville d'arrivée</label>
+            <div class="input-wrap">
+              <span class="material-icons input-icon">flight_land</span>
+              <select class="form-select" [(ngModel)]="form.villeArriveeId" (ngModelChange)="onVilleArriveeChange()"
+                      [disabled]="!form.villeDepartId">
+                <option value="">— Sélectionner —</option>
+                <option *ngFor="let v of villes" [value]="v.id" [disabled]="v.id === form.villeDepartId">
+                  {{ v.nomVille }}
+                </option>
+              </select>
+            </div>
+          </div>
+          <div class="form-field-full" *ngIf="trajetsFiltres.length > 0">
+            <label>Bus associé <span class="optional">(optionnel)</span></label>
+            <div class="input-wrap">
+              <span class="material-icons input-icon">directions_bus</span>
+              <select class="form-select" [(ngModel)]="form.trajetId">
+                <option value="">— Sans affectation bus —</option>
+                <option *ngFor="let t of trajetsFiltres" [value]="t.id">{{ getTrajetLabel(t) }}</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-field-half">
+            <label>Mode de dépôt</label>
+            <div class="input-wrap">
+              <span class="material-icons input-icon">store</span>
+              <select class="form-select" [(ngModel)]="form.modeDepot">
+                <option [value]="ModeDepot.DEPOT_AGENCE">Dépôt en agence</option>
+                <option [value]="ModeDepot.ENLEVEMENT_DOMICILE">Enlèvement domicile</option>
+                <option [value]="ModeDepot.CREATION_AGENCE">Création par agent</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-field-half">
+            <label>Mode de remise</label>
+            <div class="input-wrap">
+              <span class="material-icons input-icon">home_work</span>
+              <select class="form-select" [(ngModel)]="form.modeRemise">
+                <option value="">— Non défini —</option>
+                <option [value]="ModeRemise.LIVRAISON_DOMICILE">Livraison domicile</option>
+                <option [value]="ModeRemise.RETRAIT_AGENCE">Retrait en agence</option>
+              </select>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Collecte domicile -->
+      <div class="form-section" *ngIf="form.modeDepot === ModeDepot.ENLEVEMENT_DOMICILE">
+        <div class="form-section-title"><span class="material-icons">home</span> Informations collecte</div>
+        <div class="form-grid">
+          <div class="form-field-half">
+            <label>Adresse de collecte</label>
+            <div class="input-wrap">
+              <span class="material-icons input-icon">location_on</span>
+              <input type="text" class="form-control" placeholder="Ex : 12 rue du Port"
+                     [(ngModel)]="form.adresseCollecte" />
+            </div>
+          </div>
+          <div class="form-field-half">
+            <label>Téléphone de collecte</label>
+            <div class="input-wrap">
+              <span class="material-icons input-icon">phone</span>
+              <input type="tel" class="form-control" placeholder="+228 ..." [(ngModel)]="form.telephoneCollecte" />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Destinataire -->
+      <div class="form-section">
+        <div class="form-section-title"><span class="material-icons">person</span> Destinataire</div>
+        <div class="form-grid">
+          <div class="form-field-full">
+            <label>Nom complet <span class="required">*</span></label>
+            <div class="input-wrap">
+              <span class="material-icons input-icon">person</span>
+              <input type="text" class="form-control" placeholder="Ex : Jean Koffi"
+                     [(ngModel)]="form.nomDestinataire"
+                     (ngModelChange)="formErrors.nomDestinataire = undefined" />
+            </div>
+            <span *ngIf="formErrors.nomDestinataire" class="field-error-msg">
+              <span class="material-icons">error_outline</span> {{ formErrors.nomDestinataire }}
+            </span>
+          </div>
+          <div class="form-field-half">
+            <label>Adresse <span class="required">*</span></label>
+            <div class="input-wrap">
+              <span class="material-icons input-icon">location_on</span>
+              <input type="text" class="form-control" placeholder="Quartier, rue..."
+                     [(ngModel)]="form.adresseDestinataire"
+                     (ngModelChange)="formErrors.adresseDestinataire = undefined" />
+            </div>
+            <span *ngIf="formErrors.adresseDestinataire" class="field-error-msg">
+              <span class="material-icons">error_outline</span> {{ formErrors.adresseDestinataire }}
+            </span>
+          </div>
+          <div class="form-field-half">
+            <label>Téléphone <span class="required">*</span></label>
+            <div class="input-wrap">
+              <span class="material-icons input-icon">phone</span>
+              <input type="tel" class="form-control" placeholder="+228 ..."
+                     [(ngModel)]="form.telephoneDestinataire"
+                     (ngModelChange)="formErrors.telephoneDestinataire = undefined" />
+            </div>
+            <span *ngIf="formErrors.telephoneDestinataire" class="field-error-msg">
+              <span class="material-icons">error_outline</span> {{ formErrors.telephoneDestinataire }}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Dimensions & poids -->
+      <div class="form-section">
+        <div class="form-section-title"><span class="material-icons">straighten</span> Colis — Dimensions & poids</div>
+        <div class="form-grid">
+          <div class="form-field-quarter">
+            <label>Poids (kg) <span class="required">*</span></label>
+            <div class="input-wrap">
+              <span class="material-icons input-icon">scale</span>
+              <input type="number" min="0.1" step="0.1" class="form-control"
+                     [(ngModel)]="form.poids" (ngModelChange)="formErrors.poids = undefined" />
+            </div>
+            <span *ngIf="formErrors.poids" class="field-error-msg"><span class="material-icons">error_outline</span> {{ formErrors.poids }}</span>
+          </div>
+          <div class="form-field-quarter">
+            <label>Longueur (cm) <span class="required">*</span></label>
+            <div class="input-wrap">
+              <span class="material-icons input-icon">straighten</span>
+              <input type="number" min="1" class="form-control"
+                     [(ngModel)]="form.longueur" (ngModelChange)="formErrors.longueur = undefined" />
+            </div>
+            <span *ngIf="formErrors.longueur" class="field-error-msg"><span class="material-icons">error_outline</span> {{ formErrors.longueur }}</span>
+          </div>
+          <div class="form-field-quarter">
+            <label>Largeur (cm) <span class="required">*</span></label>
+            <div class="input-wrap">
+              <span class="material-icons input-icon">straighten</span>
+              <input type="number" min="1" class="form-control"
+                     [(ngModel)]="form.largeur" (ngModelChange)="formErrors.largeur = undefined" />
+            </div>
+            <span *ngIf="formErrors.largeur" class="field-error-msg"><span class="material-icons">error_outline</span> {{ formErrors.largeur }}</span>
+          </div>
+          <div class="form-field-quarter">
+            <label>Hauteur (cm) <span class="required">*</span></label>
+            <div class="input-wrap">
+              <span class="material-icons input-icon">height</span>
+              <input type="number" min="1" class="form-control"
+                     [(ngModel)]="form.hauteur" (ngModelChange)="formErrors.hauteur = undefined" />
+            </div>
+            <span *ngIf="formErrors.hauteur" class="field-error-msg"><span class="material-icons">error_outline</span> {{ formErrors.hauteur }}</span>
+          </div>
+          <div class="form-field-full">
+            <label>Remarques <span class="optional">(optionnel)</span></label>
+            <div class="input-wrap">
+              <span class="material-icons input-icon">notes</span>
+              <input type="text" class="form-control" placeholder="Fragile, urgent..."
+                     [(ngModel)]="form.remarques" />
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal-actions">
+      <button class="btn-cancel" (click)="closeModal()" [disabled]="isSubmitting">Annuler</button>
+      <button class="btn-primary" (click)="submitForm()" [disabled]="isSubmitting">
+        <span *ngIf="isSubmitting" class="spinner-small"></span>
+        <span *ngIf="!isSubmitting" class="material-icons">save</span>
+        {{ isSubmitting ? 'Enregistrement...' : (modalMode === ModalMode.AJOUT ? 'Créer le colis' : 'Enregistrer') }}
+      </button>
+    </div>
+  </div>
+</div>
+
+
+<!-- ═══════════════════════════════════════════════
+     MODAL — VISUALISATION
+     ═══════════════════════════════════════════════ -->
+<div class="modal-overlay" [class.show]="isModalOpen && modalMode === ModalMode.VISUALISATION"
+     (click)="closeModal()">
+  <div class="modal-sheet" role="dialog" (click)="$event.stopPropagation()">
+    <div class="modal-top-bar">
+      <div class="modal-top-icon"><span class="material-icons">inventory_2</span></div>
+      <div class="modal-top-title">
+        <h5>Détails du colis</h5>
+        <p>{{ selectedColis?.numeroSuivi || 'Consultation' }}</p>
+      </div>
+      <button class="modal-top-close" (click)="closeModal()"><span class="material-icons">close</span></button>
+    </div>
+
+    <div class="modal-content-area" *ngIf="selectedColis">
+
+      <!-- Statut + QR -->
+      <div class="view-header-colis">
+        <div class="view-statut-block">
+          <span class="statut-badge {{ getStatutConfig(selectedColis.statut).css }} statut-lg">
+            {{ getStatutConfig(selectedColis.statut).label }}
+          </span>
+          <div class="tracking-chip">
+            <span class="material-icons">qr_code_2</span>
+            <span>{{ selectedColis.numeroSuivi }}</span>
+          </div>
+        </div>
+        <div class="view-qr-block" *ngIf="selectedColis.qrCode">
+          <img [src]="getQrUrl(selectedColis.qrCode)" alt="QR Code" class="colis-qr-img" loading="lazy" />
+          <p class="qr-hint">Scanner pour suivi</p>
+        </div>
+      </div>
+
+      <!-- Trajet -->
+      <div class="form-section" *ngIf="selectedColis.villeDepartNom || selectedColis.villeArriveeNom">
+        <div class="form-section-title"><span class="material-icons">route</span> Trajet</div>
+        <div class="view-grid">
+          <div class="detail-item">
+            <div class="detail-item-label"><span class="material-icons">flight_takeoff</span> Départ</div>
+            <div class="detail-item-value">{{ selectedColis.villeDepartNom || '—' }}</div>
+          </div>
+          <div class="detail-item">
+            <div class="detail-item-label"><span class="material-icons">flight_land</span> Arrivée</div>
+            <div class="detail-item-value">{{ selectedColis.villeArriveeNom || '—' }}</div>
+          </div>
+          <div class="detail-item">
+            <div class="detail-item-label"><span class="material-icons">store</span> Mode dépôt</div>
+            <div class="detail-item-value">{{ getModeDepotLabel(selectedColis.modeDepot) }}</div>
+          </div>
+          <div class="detail-item">
+            <div class="detail-item-label"><span class="material-icons">home_work</span> Mode remise</div>
+            <div class="detail-item-value">{{ getModeRemiseLabel(selectedColis.modeRemise) }}</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Destinataire -->
+      <div class="form-section">
+        <div class="form-section-title"><span class="material-icons">person</span> Destinataire</div>
+        <div class="view-grid">
+          <div class="detail-item">
+            <div class="detail-item-label"><span class="material-icons">person</span> Nom</div>
+            <div class="detail-item-value fw-medium">{{ selectedColis.nomDestinataire }}</div>
+          </div>
+          <div class="detail-item">
+            <div class="detail-item-label"><span class="material-icons">phone</span> Téléphone</div>
+            <div class="detail-item-value">{{ selectedColis.telephoneDestinataire }}</div>
+          </div>
+          <div class="detail-item" style="grid-column:1/-1">
+            <div class="detail-item-label"><span class="material-icons">location_on</span> Adresse</div>
+            <div class="detail-item-value">{{ selectedColis.adresseDestinataire }}</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Dimensions -->
+      <div class="form-section">
+        <div class="form-section-title"><span class="material-icons">straighten</span> Dimensions & poids</div>
+        <div class="view-grid view-grid-4">
+          <div class="detail-item">
+            <div class="detail-item-label">Poids</div>
+            <div class="detail-item-value value-highlight">{{ selectedColis.poids }} kg</div>
+          </div>
+          <div class="detail-item">
+            <div class="detail-item-label">Longueur</div>
+            <div class="detail-item-value">{{ selectedColis.longueur }} cm</div>
+          </div>
+          <div class="detail-item">
+            <div class="detail-item-label">Largeur</div>
+            <div class="detail-item-value">{{ selectedColis.largeur }} cm</div>
+          </div>
+          <div class="detail-item">
+            <div class="detail-item-label">Hauteur</div>
+            <div class="detail-item-value">{{ selectedColis.hauteur }} cm</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Remarques -->
+      <div class="form-section" *ngIf="selectedColis.remarques">
+        <div class="form-section-title"><span class="material-icons">notes</span> Remarques</div>
+        <p class="remarques-text">{{ selectedColis.remarques }}</p>
+      </div>
+
+    </div>
+    <div class="modal-actions">
+      <button class="btn-cancel" (click)="closeModal()">Fermer</button>
+    </div>
+  </div>
+</div>
+
+
+<!-- ═══════════════════════════════════════════════
+     MODAL — ASSIGNER LIVREUR
+     ═══════════════════════════════════════════════ -->
+<div class="modal-overlay" [class.show]="isModalOpen && modalMode === ModalMode.ASSIGNER"
+     (click)="closeModal()">
+  <div class="modal-sheet modal-sheet-sm" role="dialog" (click)="$event.stopPropagation()">
+    <div class="modal-top-bar">
+      <div class="modal-top-icon"><span class="material-icons">person_add</span></div>
+      <div class="modal-top-title">
+        <h5>Assigner un livreur</h5>
+        <p>{{ selectedColis?.nomDestinataire }}</p>
+      </div>
+      <button class="modal-top-close" (click)="closeModal()"><span class="material-icons">close</span></button>
+    </div>
+
+    <div class="modal-content-area">
+      <div *ngIf="formError" class="alert-error"><span class="material-icons">error</span> {{ formError }}</div>
+      <div class="form-field-full">
+        <label>Livreur <span class="required">*</span></label>
+        <div class="input-wrap">
+          <span class="material-icons input-icon">person</span>
+          <select class="form-select" [(ngModel)]="selectedLivreurId">
+            <option value="">— Sélectionner un livreur —</option>
+            <option *ngFor="let l of livreurs" [value]="l.publicId">{{ l.fullName }}</option>
+          </select>
+        </div>
+      </div>
+      <div *ngIf="livreurs.length === 0" class="info-alert">
+        <span class="material-icons">info</span>
+        <span>Aucun livreur disponible dans cette agence.</span>
+      </div>
+    </div>
+
+    <div class="modal-actions">
+      <button class="btn-cancel" (click)="closeModal()" [disabled]="isSubmitting">Annuler</button>
+      <button class="btn-primary" (click)="submitAssigner()" [disabled]="isSubmitting || !selectedLivreurId">
+        <span *ngIf="isSubmitting" class="spinner-small"></span>
+        <span *ngIf="!isSubmitting" class="material-icons">check</span>
+        {{ isSubmitting ? 'Assignation...' : 'Confirmer' }}
+      </button>
+    </div>
+  </div>
+</div>

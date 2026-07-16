@@ -1,0 +1,198 @@
+<div class="dashboard-layout">
+  <app-sidebar></app-sidebar>
+
+  <div class="main-content-area">
+    <app-header></app-header>
+
+    <div class="page-body">
+      <!-- En-tête & Barre d'action -->
+      <div class="dashboard-action-bar">
+        <div class="welcome-text">
+          <h1>Feedbacks & Évaluations</h1>
+          <p>Consultez tous les retours et notes laissés par les clients</p>
+        </div>
+      </div>
+
+      <!-- Barre de Recherche -->
+      <div class="search-bar">
+        <span class="material-icons">search</span>
+        <input
+          type="text"
+          placeholder="Rechercher par client, commentaire..."
+          [(ngModel)]="searchTerm"
+          (input)="applyFilter()"
+        />
+        <span class="count-badge" style="width: 100px;">{{ filteredFeedbacks.length }} résultat(s)</span>
+        <button class="btn-refresh" (click)="loadFeedbacks()" title="Actualiser">
+          <span class="material-icons">refresh</span>
+        </button>
+      </div>
+
+      <!-- Loading state -->
+      <div *ngIf="isLoading" class="loading-state">
+        <div class="spinner"></div>
+        <p>Chargement des feedbacks...</p>
+      </div>
+
+      <!-- Error state -->
+      <div *ngIf="errorMessage && !isLoading" class="alert-error">
+        <span class="material-icons">error</span>
+        <span>{{ errorMessage }}</span>
+        <button (click)="loadFeedbacks()">Réessayer</button>
+      </div>
+
+      <!-- Tableau des Feedbacks -->
+      <div *ngIf="!isLoading && !errorMessage" class="table-container-reservations">
+        <table class="custom-reservations-table">
+          <thead>
+            <tr>
+              <th style="width:50px">#</th>
+              <th>Client</th>
+              <th>Note</th>
+              <th>Commentaire</th>
+              <th style="width:100px; text-align:right">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            <!-- Empty state -->
+            <tr *ngIf="filteredFeedbacks.length === 0">
+              <td colspan="5" class="text-center py-8">
+                <div class="empty-state">
+                  <span class="material-icons font-size-xl">star</span>
+                  <p>Aucun feedback trouvé</p>
+                </div>
+              </td>
+            </tr>
+
+            <!-- Lignes -->
+            <tr *ngFor="let fb of paginatedFeedbacks; let i = index">
+              <!-- # -->
+              <td><span class="row-num">{{ (currentPage - 1) * itemsPerPage + i + 1 }}</span></td>
+
+              <!-- Client -->
+              <td>
+                <span class="fw-medium">{{ fb.creerPar || '—' }}</span>
+              </td>
+
+              <!-- Note -->
+              <td>
+                <div class="stars">
+                  <span class="material-icons" 
+                        *ngFor="let star of getStars(fb.noteValeur)"
+                        [style.color]="star <= fb.noteValeur ? '#f59e0b' : '#cbd5e1'">
+                    star
+                  </span>
+                </div>
+              </td>
+
+              <!-- Commentaire -->
+              <td>
+                <span class="fw-medium">{{ fb.commentaireTexte || '—' }}</span>
+              </td>
+
+              <!-- Actions -->
+              <td style="text-align:right">
+                <div class="actions-wrapper">
+                  <button class="btn-table-action view" (click)="onView(fb)" title="Voir">
+                    <span class="material-icons">visibility</span>
+                  </button>
+                  <button class="btn-table-action delete" (click)="onDelete(fb.id!)" title="Supprimer">
+                    <span class="material-icons">delete</span>
+                  </button>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+
+        <!-- Pagination -->
+        <div *ngIf="filteredFeedbacks.length > 0" class="pagination-container">
+          <div class="pagination-info">
+            Affichage de {{ (currentPage - 1) * itemsPerPage + 1 }} à {{ filteredFeedbacks.length }} feedback(s)
+          </div>
+          <div class="pagination-buttons">
+            <button class="btn-pag" (click)="changePage(currentPage - 1)" [disabled]="currentPage === 1">
+              <span class="material-icons">chevron_left</span>
+            </button>
+            <button class="btn-pag" *ngFor="let page of getPaginationPages()" 
+                    [class.active]="page === currentPage"
+                    (click)="changePage(page)">
+              {{ page }}
+            </button>
+            <button class="btn-pag" (click)="changePage(currentPage + 1)" [disabled]="currentPage === totalPages">
+              <span class="material-icons">chevron_right</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════
+     MODAL — DÉTAIL FEEDBACK
+     ═══════════════════════════════════════════════════ -->
+<div class="modal-overlay" [class.show]="selectedFeedback !== null" (click)="closeDetail()">
+  <div class="modal-sheet modal-sheet-sm" role="dialog" aria-modal="true" (click)="$event.stopPropagation()">
+    <div class="modal-top-bar">
+      <div class="modal-top-icon">
+        <span class="material-icons">star</span>
+      </div>
+      <div class="modal-top-title">
+        <h5>Détails du feedback</h5>
+        <p>Informations complètes</p>
+      </div>
+      <button class="modal-top-close" (click)="closeDetail()">
+        <span class="material-icons">close</span>
+      </button>
+    </div>
+
+    <div class="modal-content-area" *ngIf="selectedFeedback">
+      <div class="view-grid">
+        <div class="detail-item">
+          <div class="detail-item-label">
+            <span class="material-icons">person</span>
+            Client
+          </div>
+          <div class="detail-item-value">{{ selectedFeedback.creerPar || '—' }}</div>
+        </div>
+
+        <div class="detail-item">
+          <div class="detail-item-label">
+            <span class="material-icons">star</span>
+            Note
+          </div>
+          <div class="detail-item-value">
+            <div class="stars">
+              <span class="material-icons" 
+                    *ngFor="let star of getStars(selectedFeedback.noteValeur)"
+                    [style.color]="star <= selectedFeedback.noteValeur ? '#f59e0b' : '#cbd5e1'">
+                star
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <div class="detail-item form-field-full">
+          <div class="detail-item-label">
+            <span class="material-icons">comment</span>
+            Commentaire
+          </div>
+          <div class="detail-item-value">{{ selectedFeedback.commentaireTexte || '—' }}</div>
+        </div>
+
+        <div class="detail-item">
+          <div class="detail-item-label">
+            <span class="material-icons">route</span>
+            ID Trajet
+          </div>
+          <div class="detail-item-value">{{ selectedFeedback.trajetId || '—' }}</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal-actions">
+      <button class="btn-cancel" (click)="closeDetail()">Fermer</button>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,142 @@
+<div class="modal-overlay">
+  <div class="modal-card">
+
+    <div class="modal-header">
+      <div class="modal-header-icon">
+        <span class="material-icons">account_circle</span>
+      </div>
+      <div class="modal-header-text">
+        <h2>Mon profil</h2>
+        <p>{{ utilisateur?.fullName }} · {{ rolesLabel() }}</p>
+      </div>
+      <button class="btn-close" (click)="fermer.emit()">
+        <span class="material-icons">close</span>
+      </button>
+    </div>
+
+    <div class="modal-tabs">
+      <button class="modal-tab" [class.active]="ongletActif === 'infos'" (click)="changerOnglet('infos')">
+        <span class="material-icons">badge</span> Informations
+      </button>
+      <button class="modal-tab" [class.active]="ongletActif === 'profil'" (click)="changerOnglet('profil')">
+        <span class="material-icons">contact_phone</span> Photo & adresse
+      </button>
+      <button class="modal-tab" [class.active]="ongletActif === 'mot-de-passe'" (click)="changerOnglet('mot-de-passe')">
+        <span class="material-icons">lock</span> Mot de passe
+      </button>
+    </div>
+
+    <div class="modal-body">
+
+      <div *ngIf="errorMessage" class="alert-error">
+        <span class="material-icons">error_outline</span>
+        {{ errorMessage }}
+      </div>
+      <div *ngIf="successMessage" class="alert-success">
+        <span class="material-icons">check_circle_outline</span>
+        {{ successMessage }}
+      </div>
+
+      <!-- ── Onglet Informations ── -->
+      <div class="form-section" *ngIf="ongletActif === 'infos'">
+        <div class="form-grid">
+          <div class="form-field form-field-full">
+            <label>Nom complet <span class="required">*</span></label>
+            <div class="input-wrap">
+              <span class="material-icons input-icon">badge</span>
+              <input type="text" class="form-control" [(ngModel)]="infosData.fullName" [disabled]="isLoading" />
+            </div>
+          </div>
+          <div class="form-field form-field-half">
+            <label>Téléphone <span class="required">*</span></label>
+            <div class="input-wrap">
+              <span class="material-icons input-icon">phone</span>
+              <input type="tel" class="form-control" [(ngModel)]="infosData.telephone" [disabled]="isLoading" />
+            </div>
+          </div>
+          <div class="form-field form-field-half">
+            <label>E-mail <span class="optional-label">(optionnel, sert à récupérer votre mot de passe)</span></label>
+            <div class="input-wrap">
+              <span class="material-icons input-icon">mail</span>
+              <input type="email" class="form-control" [(ngModel)]="infosData.email" [disabled]="isLoading" />
+            </div>
+          </div>
+        </div>
+        <button class="btn-submit" [disabled]="isLoading" (click)="enregistrerInfos()">
+          <span *ngIf="isLoading" class="spinner-small"></span>
+          <span *ngIf="!isLoading" class="material-icons">save</span>
+          {{ isLoading ? 'Enregistrement...' : 'Enregistrer' }}
+        </button>
+      </div>
+
+      <!-- ── Onglet Photo & adresse ── -->
+      <div class="form-section" *ngIf="ongletActif === 'profil'">
+        <div class="form-grid">
+          <div class="form-field form-field-full">
+            <label>Adresse</label>
+            <div class="input-wrap">
+              <span class="material-icons input-icon">location_on</span>
+              <input type="text" class="form-control" [(ngModel)]="profilData.adresse" [disabled]="isLoading" />
+            </div>
+          </div>
+          <div class="form-field form-field-full">
+            <label>Photo de profil</label>
+            <div class="file-upload-wrap">
+              <label class="file-upload-btn">
+                <span class="material-icons">upload</span>
+                Choisir une image
+                <input type="file" accept="image/*" (change)="onFileSelected($event)" [disabled]="isLoading" hidden />
+              </label>
+              <div *ngIf="photoPreview" class="photo-preview">
+                <img [src]="photoPreview" alt="Aperçu" />
+              </div>
+            </div>
+          </div>
+        </div>
+        <button class="btn-submit" [disabled]="isLoading" (click)="enregistrerProfil()">
+          <span *ngIf="isLoading" class="spinner-small"></span>
+          <span *ngIf="!isLoading" class="material-icons">save</span>
+          {{ isLoading ? 'Enregistrement...' : 'Enregistrer' }}
+        </button>
+      </div>
+
+      <!-- ── Onglet Mot de passe ── -->
+      <div class="form-section" *ngIf="ongletActif === 'mot-de-passe'">
+        <div class="form-grid">
+          <div class="form-field form-field-full">
+            <label>Mot de passe actuel <span class="required">*</span></label>
+            <div class="input-wrap">
+              <span class="material-icons input-icon">lock</span>
+              <input type="password" class="form-control" [(ngModel)]="passwordData.currentPassword" [disabled]="isLoading" />
+            </div>
+          </div>
+          <div class="form-field form-field-half">
+            <label>Nouveau mot de passe <span class="required">*</span></label>
+            <div class="input-wrap">
+              <span class="material-icons input-icon">key</span>
+              <input type="password" class="form-control" [(ngModel)]="passwordData.newPassword" [disabled]="isLoading" />
+            </div>
+          </div>
+          <div class="form-field form-field-half">
+            <label>Confirmer le nouveau mot de passe <span class="required">*</span></label>
+            <div class="input-wrap">
+              <span class="material-icons input-icon">key</span>
+              <input type="password" class="form-control" [(ngModel)]="passwordData.confirmPassword" [disabled]="isLoading" />
+            </div>
+          </div>
+        </div>
+        <button class="btn-submit" [disabled]="isLoading" (click)="changerMotDePasse()" style="margin-top: 20px;">
+          <span *ngIf="isLoading" class="spinner-small"></span>
+          <span *ngIf="!isLoading" class="material-icons">lock_reset</span>
+          {{ isLoading ? 'Modification...' : 'Changer le mot de passe' }}
+        </button>
+      </div>
+
+    </div>
+
+    <div class="modal-footer">
+      <button class="btn-cancel" (click)="fermer.emit()">Fermer</button>
+    </div>
+
+  </div>
+</div>

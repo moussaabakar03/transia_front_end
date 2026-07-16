@@ -1,64 +1,149 @@
 <div class="modal-overlay">
   <div class="modal-card">
+
     <div class="modal-header">
-      <h2>Modifier l'utilisateur</h2>
+      <div class="modal-header-icon">
+        <span class="material-icons">edit</span>
+      </div>
+      <div class="modal-header-text">
+        <h2>Modifier l'utilisateur</h2>
+        <p>{{ utilisateur?.fullName }}</p>
+      </div>
       <button class="btn-close" (click)="fermer.emit()">
         <span class="material-icons">close</span>
       </button>
     </div>
 
-    <div class="modal-body" *ngIf="profil">
-      <div class="form-section">
-        <h3>Identifiants</h3>
-        <div class="input-group">
-          <label>Nom complet *</label>
-          <input type="text" [(ngModel)]="userData.fullName" [disabled]="isLoading">
-        </div>
-        <div class="input-group">
-          <label>Nom d'utilisateur *</label>
-          <input type="text" [(ngModel)]="userData.username" [disabled]="isLoading">
-        </div>
-        <!-- modal-edit-user.html, extrait -->
-        <div class="input-group">
-          <label>Rôle</label>
-          <select [(ngModel)]="selectedRoleId" [disabled]="isLoading || isLoadingRoles">
-            <option *ngFor="let role of rolesList" [ngValue]="role.id">{{ role.name }}</option>
-          </select>
-        </div>
-        <div class="input-group">
-          <label>Statut</label>
-          <select [(ngModel)]="userData.enable" [disabled]="isLoading">
-            <option [ngValue]="true">Actif</option>
-            <option [ngValue]="false">Inactif</option>
-          </select>
-        </div>
+    <div class="modal-body" *ngIf="utilisateur">
+
+      <div *ngIf="errorMessage" class="alert-error">
+        <span class="material-icons">error_outline</span>
+        {{ errorMessage }}
       </div>
 
+      <!-- ── Identifiants ── -->
       <div class="form-section">
-        <h3>Profil</h3>
-        <div class="input-group">
-          <label>Téléphone</label>
-          <input type="tel" [(ngModel)]="profilData.telephone" [disabled]="isLoading">
+        <div class="form-section-title">
+          <span class="material-icons">lock</span> Identifiants
         </div>
-        <div class="input-group">
-          <label>Adresse</label>
-          <input type="text" [(ngModel)]="profilData.adresse" [disabled]="isLoading">
-        </div>
-        <div class="input-group">
-          <label>Photo de profil</label>
-          <input type="file" accept="image/*" (change)="onFileSelected($event)" [disabled]="isLoading">
-          <div *ngIf="photoPreview" class="photo-preview">
-            <img [src]="photoPreview" width="80">
+        <div class="form-grid">
+          <div class="form-field form-field-full">
+            <label>Nom complet <span class="required">*</span></label>
+            <div class="input-wrap">
+              <span class="material-icons input-icon">badge</span>
+              <input type="text" class="form-control" [(ngModel)]="userData.fullName" [disabled]="isLoading" />
+            </div>
+          </div>
+          <div class="form-field form-field-half">
+            <label>Téléphone <span class="required">*</span></label>
+            <div class="input-wrap">
+              <span class="material-icons input-icon">phone</span>
+              <input type="tel" class="form-control" [(ngModel)]="userData.telephone" [disabled]="isLoading" />
+            </div>
+          </div>
+          <div class="form-field form-field-half">
+            <label>E-mail <span class="optional-label">(optionnel)</span></label>
+            <div class="input-wrap">
+              <span class="material-icons input-icon">mail</span>
+              <input type="email" class="form-control" [(ngModel)]="userData.email" [disabled]="isLoading" />
+            </div>
+          </div>
+          <div class="form-field form-field-full">
+            <label>Nouveau mot de passe <span class="optional-label">(laisser vide pour ne pas changer)</span></label>
+            <div class="input-wrap">
+              <span class="material-icons input-icon">key</span>
+              <input type="password" class="form-control" [(ngModel)]="userData.password" [disabled]="isLoading" />
+            </div>
           </div>
         </div>
       </div>
+
+      <!-- ── Rôles (multi-sélection) ── -->
+      <div class="form-section">
+        <div class="form-section-title">
+          <span class="material-icons">admin_panel_settings</span> Rôles <span class="required">*</span>
+        </div>
+        <div class="roles-checkbox-grid" *ngIf="!isLoadingRoles; else chargementRoles">
+          <label class="role-checkbox" *ngFor="let role of rolesSelectionnables">
+            <input type="checkbox"
+                   [checked]="isRoleSelected(role.name)"
+                   (change)="toggleRole(role.name)"
+                   [disabled]="isLoading" />
+            {{ role.name }}
+          </label>
+        </div>
+        <ng-template #chargementRoles>Chargement des rôles...</ng-template>
+      </div>
+
+      <!-- ── Localisation (Chauffeur / Livreur) ── -->
+      <div class="form-section" *ngIf="isFieldAgent">
+        <div class="form-section-title">
+          <span class="material-icons">location_on</span> Localisation
+        </div>
+        <div class="form-grid">
+          <div class="form-field form-field-half">
+            <label>Ville de base</label>
+            <div class="input-wrap">
+              <span class="material-icons input-icon">home_pin</span>
+              <select class="form-select" [(ngModel)]="userData.villeBaseId" [disabled]="isLoading">
+                <option value="">— Non définie —</option>
+                <option *ngFor="let v of villes" [value]="v.id">{{ v.nomVille }}</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-field form-field-half">
+            <label>Ville actuelle</label>
+            <div class="input-wrap">
+              <span class="material-icons input-icon">my_location</span>
+              <select class="form-select" [(ngModel)]="userData.villeActuelleId" [disabled]="isLoading">
+                <option value="">— Non définie —</option>
+                <option *ngFor="let v of villes" [value]="v.id">{{ v.nomVille }}</option>
+              </select>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── Agence (Agent d'accueil / Admin d'agence) ── -->
+      <div class="form-section" *ngIf="isAgence">
+        <div class="form-section-title">
+          <span class="material-icons">store</span> Affectation agence
+        </div>
+        <div class="form-grid">
+          <div class="form-field form-field-half">
+            <label>Ville</label>
+            <div class="input-wrap">
+              <span class="material-icons input-icon">location_city</span>
+              <select class="form-select" [(ngModel)]="userData.villeBaseId"
+                      (ngModelChange)="onVilleBaseChange()" [disabled]="isLoading">
+                <option value="">— Toutes les villes —</option>
+                <option *ngFor="let v of villes" [value]="v.id">{{ v.nomVille }}</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-field form-field-half">
+            <label>Agence d'appartenance</label>
+            <div class="input-wrap">
+              <span class="material-icons input-icon">store</span>
+              <select class="form-select" [(ngModel)]="userData.agenceId" [disabled]="isLoading">
+                <option value="">— Sélectionner —</option>
+                <option *ngFor="let a of agencesFiltrees" [value]="a.id">{{ a.nom }}</option>
+              </select>
+            </div>
+          </div>
+        </div>
+      </div>
+
     </div>
 
     <div class="modal-footer">
-      <button class="btn-cancel" (click)="fermer.emit()" [disabled]="isLoading">ANNULER</button>
+      <button class="btn-cancel" (click)="fermer.emit()" [disabled]="isLoading">Annuler</button>
       <button class="btn-submit" [disabled]="isLoading" (click)="submit()">
-        {{ isLoading ? 'ENREGISTREMENT...' : 'ENREGISTRER' }}
+        <span *ngIf="isLoading" class="spinner-small"></span>
+        <span *ngIf="!isLoading" class="material-icons">save</span>
+        {{ isLoading ? 'Enregistrement...' : 'Enregistrer' }}
       </button>
     </div>
+
   </div>
 </div>

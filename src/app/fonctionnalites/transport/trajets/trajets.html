@@ -1,1 +1,304 @@
-<p>trajets works!</p>
+<div class="dashboard-layout">
+  <app-sidebar></app-sidebar>
+
+  <div class="main-content-area">
+    <app-header (actionCreer)="ouvrirCreation()"></app-header>
+    
+    <div class="page-body">
+      <div class="dashboard-action-bar">
+        <div class="welcome-text">
+          <h1>Gestion des Trajets</h1>
+          <p>Configurez et listez les trajets de transport entre les villes.</p>
+        </div>
+        
+        <button class="btn-blue-action-local" (click)="ouvrirCreation()">
+          <span class="material-icons">route</span>
+          NOUVEAU TRAJET
+        </button>
+      </div>
+
+      <!-- Barre de Recherche -->
+      <div class="search-bar">
+        <span class="material-icons">search</span>
+        <input
+          type="text"
+          placeholder="Rechercher par ville de départ, d'arrivée ou immatriculation..."
+          [(ngModel)]="valeurSaisi"
+          (input)="filtrerTrajets()"
+        />
+      </div>
+
+      <!-- Tableau des Trajets -->
+      <div class="table-container-trajets">
+        <table class="custom-trajets-table">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>DÉPART</th>
+              <th>ARRIVÉE</th>
+              <th>VÉHICULE</th>
+              <th>DATE</th>
+              <th>HEURE</th>
+              <th>TARIF</th>
+              <th>STATUT</th>
+              <th class="text-center">ACTIONS</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (trajet of trajetsAffiches; track trajet.id) {
+              <tr>
+                <td>
+                  <span class="trajet-id-tag">#TR-{{ trajet.id?.substring(0,5) || 'N/A' }}</span>
+                </td>
+                <td>
+                  <div class="ville-cell">
+                    <span class="material-icons location-icon">location_on</span>
+                    <span>{{ trajet.villeDepart.nomVille }}</span>
+                  </div>
+                </td>
+                <td>
+                  <div class="ville-cell">
+                    <span class="material-icons location-icon">place</span>
+                    <span>{{ trajet.villeArrivee.nomVille }}</span>
+                  </div>
+                </td>
+                <td>
+                  <span class="vehicule-badge">{{ trajet.vehicule.immatriculation }}</span>
+                </td>
+                <td>{{ trajet.dateDepart }}</td>
+                <td>{{ trajet.heureDepart }}</td>
+                <td>{{ trajet.tarif }} FCFA</td>
+                <td>
+                  <span class="statut-badge" [ngClass]="getStatutClass(trajet.statut)">
+                    {{ getStatutLibelle(trajet.statut) }}
+                  </span>
+                </td>
+                <td class="text-center actions-cell">
+                  <div class="actions-wrapper">
+                    <button class="btn-table-action edit" (click)="ouvrirEdit(trajet)" title="Modifier le trajet">
+                      <span class="material-icons">edit</span>
+                    </button>
+                    <button class="btn-table-action delete" (click)="supprimerTrajet(trajet.id, trajet.villeDepart.nomVille + ' → ' + trajet.villeArrivee.nomVille)" title="Supprimer le trajet">
+                      <span class="material-icons">delete</span>
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            } @empty {
+              <tr>
+                <td colspan="9" class="text-center py-8">
+                  <div class="empty-state">
+                    <span class="material-icons font-size-xl">route</span>
+                    <p>Aucun trajet ne correspond à votre recherche.</p>
+                  </div>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Pagination -->
+      <div class="pagination-container">
+        <span class="pagination-info">
+          Affichage de {{ trajetsAffiches.length }} sur {{ totalTrajets }} trajet(s)
+        </span>
+        <div class="pagination-buttons">
+          <button class="btn-pag" [disabled]="pageActuelle === 1" (click)="pagePrecedente()">
+            <span class="material-icons">chevron_left</span>
+          </button>
+          @for (p of [].constructor(totalPages); track $index) {
+            <button 
+              class="btn-pag" 
+              [class.active]="pageActuelle === $index + 1"
+              (click)="changerPage($index + 1)">
+              {{ $index + 1 }}
+            </button>
+          }
+          <button class="btn-pag" [disabled]="pageActuelle === totalPages" (click)="pageSuivante()">
+            <span class="material-icons">chevron_right</span>
+          </button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- Modale de création de trajet -->
+<div class="custom-modal-backdrop" *ngIf="afficherCreationTrajet">
+  <div class="custom-modal-box">
+    <div class="modal-header">
+      <h2>Ajouter un nouveau trajet</h2>
+      <button class="close-icon-btn" (click)="afficherCreationTrajet = false">
+        <span class="material-icons">close</span>
+      </button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label>Ville de départ</label>
+        @if (!isAdmin && agentVilleNom) {
+          <div class="ville-fixe-display">
+            <span class="material-icons">location_on</span>
+            <span>{{ agentVilleNom }}</span>
+            <span class="ville-fixe-badge">Votre agence</span>
+          </div>
+        } @else {
+          <select [(ngModel)]="nouveauTrajet.villeDepartId" class="form-select">
+            <option value="">Sélectionner une ville</option>
+            @for (ville of villes; track ville.id) {
+              <option [value]="ville.id">{{ ville.nomVille }} ({{ ville.region }})</option>
+            }
+          </select>
+        }
+      </div>
+      <div class="form-group">
+        <label>Ville d'arrivée</label>
+        <select [(ngModel)]="nouveauTrajet.villeArriveeId" class="form-select">
+          <option value="">Sélectionner une ville</option>
+          @for (ville of villes; track ville.id) {
+            <option [value]="ville.id" [disabled]="ville.id === nouveauTrajet.villeDepartId">
+              {{ ville.nomVille }} ({{ ville.region }})
+            </option>
+          }
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Véhicule</label>
+        <select [(ngModel)]="nouveauTrajet.vehiculeId" class="form-select">
+          <option value="">Sélectionner un véhicule</option>
+          @for (vehicule of vehicules; track vehicule.id) {
+            <option [value]="vehicule.id">{{ vehicule.marque }} {{ vehicule.modele }} ({{ vehicule.immatriculation }})</option>
+          }
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Chauffeur</label>
+        <select [(ngModel)]="nouveauTrajet.chauffeurId" class="form-select">
+          <option value="">Sélectionner un chauffeur</option>
+          @for (chauffeur of chauffeurs; track chauffeur.id) {
+            <option [value]="chauffeur.id">{{ chauffeur.fullName || chauffeur.username }}</option>
+          }
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Distance (km)</label>
+        <input type="number" [(ngModel)]="nouveauTrajet.distance" placeholder="Ex: 150">
+      </div>
+      <div class="form-group">
+        <label>Durée estimée</label>
+        <input type="text" [(ngModel)]="nouveauTrajet.dureeEstimee" placeholder="Ex: 2h30">
+      </div>
+      <div class="form-group">
+        <label>Tarif (FCFA)</label>
+        <input type="number" [(ngModel)]="nouveauTrajet.tarif" placeholder="Ex: 5000">
+      </div>
+      <div class="form-group">
+        <label>Date de départ</label>
+        <input type="date" [(ngModel)]="nouveauTrajet.dateDepart">
+      </div>
+      <div class="form-group">
+        <label>Heure de départ</label>
+        <input type="time" [(ngModel)]="nouveauTrajet.heureDepart">
+      </div>
+      <div class="form-group">
+        <label>Statut</label>
+        <select [(ngModel)]="nouveauTrajet.statut" class="form-select">
+          <option [value]="StatutTrajet.PROGRAMME">Programmé</option>
+          <option [value]="StatutTrajet.EN_COURS">En Cours</option>
+          <option [value]="StatutTrajet.TERMINE">Terminé</option>
+          <option [value]="StatutTrajet.ANNULE">Annulé</option>
+        </select>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-secondary" (click)="afficherCreationTrajet = false">Annuler</button>
+      <button class="btn-primary" (click)="soumettreCreation()">Enregistrer</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modale de modification de trajet -->
+@if (afficherEditTrajet && trajetEditer) {
+<div class="custom-modal-backdrop">
+  <div class="custom-modal-box">
+    <div class="modal-header">
+      <h2>Modifier le trajet</h2>
+      <button class="close-icon-btn" (click)="afficherEditTrajet = false; trajetEditer = null">
+        <span class="material-icons">close</span>
+      </button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label>Ville de départ</label>
+        <select [(ngModel)]="trajetEditer.villeDepart.id" class="form-select">
+          <option value="">Sélectionner une ville</option>
+          @for (ville of villes; track ville.id) {
+            <option [value]="ville.id">{{ ville.nomVille }} ({{ ville.region }})</option>
+          }
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Ville d'arrivée</label>
+        <select [(ngModel)]="trajetEditer.villeArrivee.id" class="form-select">
+          <option value="">Sélectionner une ville</option>
+          @for (ville of villes; track ville.id) {
+            <option [value]="ville.id">{{ ville.nomVille }} ({{ ville.region }})</option>
+          }
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Véhicule</label>
+        <select [(ngModel)]="trajetEditer.vehicule.id" class="form-select">
+          <option value="">Sélectionner un véhicule</option>
+          @for (vehicule of vehicules; track vehicule.id) {
+            <option [value]="vehicule.id">{{ vehicule.marque }} {{ vehicule.modele }} ({{ vehicule.immatriculation }})</option>
+          }
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Chauffeur</label>
+        <select [(ngModel)]="trajetEditer.chauffeurId" class="form-select">
+          <option value="">Sélectionner un chauffeur</option>
+          @for (chauffeur of chauffeurs; track chauffeur.id) {
+            <option [value]="chauffeur.id">{{ chauffeur.fullName || chauffeur.username }}</option>
+          }
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Distance (km)</label>
+        <input type="number" [(ngModel)]="trajetEditer.distance">
+      </div>
+      <div class="form-group">
+        <label>Durée estimée</label>
+        <input type="text" [(ngModel)]="trajetEditer.dureeEstimee">
+      </div>
+      <div class="form-group">
+        <label>Tarif (FCFA)</label>
+        <input type="number" [(ngModel)]="trajetEditer.tarif">
+      </div>
+      <div class="form-group">
+        <label>Date de départ</label>
+        <input type="date" [(ngModel)]="trajetEditer.dateDepart">
+      </div>
+      <div class="form-group">
+        <label>Heure de départ</label>
+        <input type="time" [(ngModel)]="trajetEditer.heureDepart">
+      </div>
+      <div class="form-group">
+        <label>Statut</label>
+        <select [(ngModel)]="trajetEditer.statut" class="form-select">
+          <option [value]="StatutTrajet.PROGRAMME">Programmé</option>
+          <option [value]="StatutTrajet.EN_COURS">En Cours</option>
+          <option [value]="StatutTrajet.TERMINE">Terminé</option>
+          <option [value]="StatutTrajet.ANNULE">Annulé</option>
+        </select>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-secondary" (click)="afficherEditTrajet = false; trajetEditer = null">Annuler</button>
+      <button class="btn-primary" (click)="soumettreModification()">Enregistrer les modifications</button>
+    </div>
+  </div>
+</div>
+}

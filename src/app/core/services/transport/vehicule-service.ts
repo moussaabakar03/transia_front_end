@@ -4,14 +4,12 @@ import { Observable } from 'rxjs';
 import { Vehicule, VehiculePayload } from '../../../shared/models/vehicule';
 import { environment } from '../../../../environments/environment';
 
-@Injectable({
-  providedIn: 'root',
-})
+@Injectable({ providedIn: 'root' })
 export class VehiculeService {
-  
-  constructor(private http: HttpClient){}
 
-  getAll(): Observable<Vehicule[]>{
+  constructor(private http: HttpClient) {}
+
+  getAll(): Observable<Vehicule[]> {
     return this.http.get<Vehicule[]>(`${environment.baseUrl}/vehicule`);
   }
 
@@ -34,5 +32,8 @@ export class VehiculeService {
   getDisponibles(): Observable<Vehicule[]> {
     return this.http.get<Vehicule[]>(`${environment.baseUrl}/vehicule/disponible`);
   }
-    
+
+  getDisponiblesByVille(villeId: string): Observable<Vehicule[]> {
+    return this.http.get<Vehicule[]>(`${environment.baseUrl}/vehicule/disponible?villeId=${villeId}`);
+  }
 }

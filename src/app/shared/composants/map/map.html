@@ -1,0 +1,13 @@
+<div class="map-container">
+  <div class="map-placeholder" *ngIf="!mapInitialized">
+    <div class="map-icon">🗺️</div>
+    <p>Carte interactive</p>
+    <p class="map-note">Intégration Leaflet/Google Maps à venir</p>
+  </div>
+  <div class="map-wrapper" *ngIf="mapInitialized">
+    <div id="map" class="map"></div>
+  </div>
+  <div class="map-info" *ngIf="locations.length > 0">
+    <p>{{ locations.length }} localisation(s) à afficher</p>
+  </div>
+</div>

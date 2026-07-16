@@ -2,17 +2,11 @@
   <div class="header-actions">
     <div class="user-profile-wrapper">
       <div class="user-profile-info" (click)="toggleDropdown()">
-        <span class="welcome-user">Welcome, <strong>{{ user.nom }}- {{ user.username }}</strong></span>
-        
-        <!-- <img *ngIf="userAvatar; else defaultAvatar" [src]="userAvatar" alt="Avatar" class="user-avatar-img"> -->
-        
-        <img *ngIf="userAvatar" [src]="userAvatar" alt="Avatar" class="user-avatar-img">
-        <span *ngIf="!userAvatar" class="material-icons avatar-icon">account_circle</span>
+        <span class="welcome-user">Bienvenue, <strong>{{ userName }}</strong></span>
 
-        <ng-template #defaultAvatar>
-          <span class="material-icons avatar-icon">account_circle</span>
-        </ng-template>
-        
+        <!-- <img src="images/admin.jpg" alt="Avatar" class="user-avatar-img"> -->
+        <img src="{{ profilData.photoProfil }}" alt="Avatar" class="user-avatar-img">
+
         <span class="material-icons arrow-icon">expand_more</span>
       </div>
 
@@ -21,10 +15,9 @@
           <p class="role-badge">{{ userRole }}</p>
         </div>
         <hr class="dropdown-divider">
-        <!-- <button class="dropdown-item" (click)="goToProfile()"> -->
-        <button class="dropdown-item" (click)="ouvrirViewProfile()">
+        <button class="dropdown-item" (click)="ouvrirMonProfil()">
           <span class="material-icons">person</span>
-          Profil
+          Mon profil
         </button>
         <button class="dropdown-item logout-btn" (click)="logout()">
           <span class="material-icons">logout</span>
@@ -36,9 +29,6 @@
   </div>
 </div>
 
-<app-modal-view-profile *ngIf="afficherViewProfile"
-  [profil]="profilVoir"
-  (fermer)="fermerViewProfile()"
-  [titre]="titreViewProfil"
-  >
-</app-modal-view-profile>
+<app-modal-mon-profil *ngIf="afficherMonProfil"
+  (fermer)="fermerMonProfil()">
+</app-modal-mon-profil>
