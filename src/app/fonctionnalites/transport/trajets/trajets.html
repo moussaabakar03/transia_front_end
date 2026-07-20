@@ -11,10 +11,12 @@
           <p>Configurez et listez les trajets de transport entre les villes.</p>
         </div>
         
-        <button class="btn-blue-action-local" (click)="ouvrirCreation()">
-          <span class="material-icons">route</span>
-          NOUVEAU TRAJET
-        </button>
+        @if (peutGerer) {
+          <button class="btn-blue-action-local" (click)="ouvrirCreation()">
+            <span class="material-icons">route</span>
+            NOUVEAU TRAJET
+          </button>
+        }
       </div>
 
       <!-- Barre de Recherche -->
@@ -78,12 +80,14 @@
                     <button class="btn-table-action view" (click)="ouvrirDetail(trajet)" title="Voir détails">
                       <span class="material-icons">visibility</span>
                     </button>
-                    <button class="btn-table-action edit" (click)="ouvrirEdit(trajet)" title="Modifier le trajet">
-                      <span class="material-icons">edit</span>
-                    </button>
-                    <button class="btn-table-action delete" (click)="supprimerTrajet(trajet.id, trajet.villeDepart.nomVille + ' → ' + trajet.villeArrivee.nomVille)" title="Supprimer le trajet">
-                      <span class="material-icons">delete</span>
-                    </button>
+                    @if (peutGerer) {
+                      <button class="btn-table-action edit" (click)="ouvrirEdit(trajet)" title="Modifier le trajet">
+                        <span class="material-icons">edit</span>
+                      </button>
+                      <button class="btn-table-action delete" (click)="supprimerTrajet(trajet.id, trajet.villeDepart.nomVille + ' → ' + trajet.villeArrivee.nomVille)" title="Supprimer le trajet">
+                        <span class="material-icons">delete</span>
+                      </button>
+                    }
                   </div>
                 </td>
               </tr>
@@ -372,10 +376,12 @@
     </div>
     <div class="modal-footer">
       <button class="btn-secondary" (click)="fermerDetail()">Fermer</button>
-      <button class="btn-primary" (click)="fermerDetail(); ouvrirEdit(trajetVoir)">
-        <span class="material-icons">edit</span>
-        Modifier
-      </button>
+      @if (peutGerer) {
+        <button class="btn-primary" (click)="fermerDetail(); ouvrirEdit(trajetVoir)">
+          <span class="material-icons">edit</span>
+          Modifier
+        </button>
+      }
     </div>
   </div>
 </div>

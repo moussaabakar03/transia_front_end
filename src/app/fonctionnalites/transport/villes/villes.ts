@@ -5,6 +5,7 @@ import { Sidebar } from '../../../shared/composants/sidebar/sidebar';
 import { Header } from '../../../shared/composants/header/header';
 import { Ville } from '../../../shared/models/ville';
 import { VilleService } from '../../../core/services/transport/ville-service';
+import { CurrentUserService } from '../../../core/services/current-user.service';
 
 @Component({
   selector: 'app-villes',
@@ -23,7 +24,7 @@ export class Villes implements OnInit {
 
   // Données éditées / en cours
   villeEditer: Ville | null = null;
-  nouvelleVille: Ville = { id: '', nomVille: '', region: '' };
+  nouvelleVille: Ville = { id: '', nomVille: '', region: '', pays: 'Togo' };
 
   // Pagination
   pageActuelle: number = 1;
@@ -37,9 +38,16 @@ export class Villes implements OnInit {
   toutesLesVilles: Ville[] = [];        // Toutes les villes depuis le backend
   resultatsFiltres: Ville[] = [];       // Résultats après application du filtre (avant pagination)
 
-  constructor(private villeService: VilleService) {}
+  // Droits d'écriture (SUPER_ADMIN uniquement, cf. VilleController côté backend)
+  peutGerer: boolean = false;
+
+  constructor(
+    private villeService: VilleService,
+    private currentUser: CurrentUserService
+  ) {}
 
   ngOnInit(): void {
+    this.peutGerer = this.currentUser.peutGererVilles();
     this.loadVilles();
   }
 
@@ -124,7 +132,7 @@ export class Villes implements OnInit {
 
   // Actions de création
   ouvrirCreation(): void {
-    this.nouvelleVille = { id: '', nomVille: '', region: '' };
+    this.nouvelleVille = { id: '', nomVille: '', region: '', pays: 'Togo' };
     this.afficherCreationVille = true;
   }
 

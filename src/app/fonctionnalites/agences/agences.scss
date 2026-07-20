@@ -1,169 +1,5 @@
-.page-container {
-  padding: 1.5rem;
-}
-
-.page-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 1.5rem;
-
-  h2 {
-    font-size: 1.4rem;
-    font-weight: 600;
-    color: #1e293b;
-  }
-}
-
-.form-card {
-  background: #fff;
-  border-radius: 8px;
-  padding: 1.5rem;
-  margin-bottom: 1.5rem;
-  box-shadow: 0 1px 4px rgba(0,0,0,.08);
-
-  h3 {
-    font-size: 1rem;
-    font-weight: 600;
-    margin-bottom: 1rem;
-    color: #334155;
-  }
-}
-
-.form-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-  gap: 1rem;
-}
-
-.form-group {
-  display: flex;
-  flex-direction: column;
-  gap: .4rem;
-
-  label {
-    font-size: .8rem;
-    font-weight: 500;
-    color: #64748b;
-  }
-
-  input, select {
-    padding: .5rem .75rem;
-    border: 1px solid #cbd5e1;
-    border-radius: 6px;
-    font-size: .9rem;
-    outline: none;
-
-    &:focus { border-color: #6366f1; }
-  }
-}
-
-.form-actions {
-  display: flex;
-  gap: .75rem;
-  margin-top: 1.25rem;
-}
-
-.table-card {
-  background: #fff;
-  border-radius: 8px;
-  box-shadow: 0 1px 4px rgba(0,0,0,.08);
-  overflow: hidden;
-
-  table {
-    width: 100%;
-    border-collapse: collapse;
-
-    th {
-      background: #f8fafc;
-      padding: .75rem 1rem;
-      text-align: left;
-      font-size: .78rem;
-      font-weight: 600;
-      color: #64748b;
-      text-transform: uppercase;
-      letter-spacing: .04em;
-    }
-
-    td {
-      padding: .75rem 1rem;
-      border-top: 1px solid #f1f5f9;
-      font-size: .9rem;
-      color: #334155;
-    }
-
-    tr:hover td { background: #f8fafc; }
-  }
-}
-
-.gps-badge {
-  font-size: .78rem;
-  background: #ede9fe;
-  color: #6d28d9;
-  padding: .2rem .5rem;
-  border-radius: 4px;
-  font-family: monospace;
-}
-
-.text-muted { color: #94a3b8; }
-
-.actions {
-  display: flex;
-  gap: .5rem;
-}
-
-.btn-primary {
-  display: inline-flex;
-  align-items: center;
-  gap: .3rem;
-  padding: .5rem 1rem;
-  background: #6366f1;
-  color: #fff;
-  border: none;
-  border-radius: 6px;
-  font-size: .88rem;
-  cursor: pointer;
-  font-weight: 500;
-
-  &:hover { background: #4f46e5; }
-
-  i { font-size: 1rem; }
-}
-
-.btn-secondary {
-  padding: .5rem 1rem;
-  background: #f1f5f9;
-  color: #475569;
-  border: none;
-  border-radius: 6px;
-  font-size: .88rem;
-  cursor: pointer;
-
-  &:hover { background: #e2e8f0; }
-}
-
-.btn-icon {
-  padding: .3rem;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-
-  i { font-size: 1.1rem; }
-
-  &.edit { background: #e0f2fe; color: #0284c7; &:hover { background: #bae6fd; } }
-  &.delete { background: #fee2e2; color: #dc2626; &:hover { background: #fecaca; } }
-}
-
-.empty-row {
-  text-align: center;
-  color: #94a3b8;
-  padding: 2rem !important;
-}
-
 // =============================================
-// LAYOUT STRUCTURAL GLOBAL (Anti-chevauchement)
+// LAYOUT STRUCTURAL GLOBAL (identique à Vehicules/Trajets)
 // =============================================
 .dashboard-layout {
   display: flex;
@@ -202,7 +38,7 @@ app-sidebar {
 }
 
 // =============================================
-// ⚡ BARRE D'ACTION & EN-TÊTE
+// EN-TÊTE & BARRE D'ACTION
 // =============================================
 .dashboard-action-bar {
   display: flex;
@@ -250,7 +86,7 @@ app-sidebar {
 }
 
 // =============================================
-// 🔍 BARRE DE RECHERCHE ÉPURÉE
+// BARRE DE RECHERCHE
 // =============================================
 .search-bar {
   display: flex;
@@ -282,9 +118,9 @@ app-sidebar {
 }
 
 // =============================================
-// 📊 TABLEAU DES VÉHICULES
+// TABLEAU DES AGENCES
 // =============================================
-.table-container-vehicules {
+.table-container-agences {
   background: #ffffff;
   border-radius: 24px;
   border: 1px solid #e2e8f0;
@@ -292,7 +128,7 @@ app-sidebar {
   overflow: hidden;
 }
 
-.custom-vehicules-table {
+.custom-agences-table {
   width: 100%;
   border-collapse: collapse;
   text-align: left;
@@ -330,31 +166,7 @@ app-sidebar {
   }
 }
 
-.vehicule-image {
-  width: 60px;
-  height: 60px;
-  object-fit: cover;
-  border-radius: 8px;
-  border: 1px solid #e2e8f0;
-}
-
-.vehicule-image-placeholder {
-  width: 60px;
-  height: 60px;
-  border-radius: 8px;
-  background-color: #f1f5f9;
-  border: 1px solid #e2e8f0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #94a3b8;
-
-  .material-icons {
-    font-size: 24px;
-  }
-}
-
-.vehicule-id-tag {
+.agence-id-tag {
   font-family: monospace;
   background-color: #f1f5f9;
   color: #64748b;
@@ -364,31 +176,58 @@ app-sidebar {
   font-weight: 600;
 }
 
-.vehicule-name-cell {
+.agence-image {
+  width: 56px;
+  height: 56px;
+  object-fit: cover;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+}
+
+.agence-image-placeholder {
+  width: 56px;
+  height: 56px;
+  border-radius: 8px;
+  background-color: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #94a3b8;
+
+  .material-icons {
+    font-size: 22px;
+  }
+}
+
+.agence-name-cell {
   display: flex;
   align-items: center;
   gap: 10px;
 
-  .car-icon {
+  .agence-icon {
     color: #3b82f6;
     font-size: 20px;
   }
 
-  .vehicule-title {
+  .agence-title {
     font-weight: 700;
     color: #1e293b;
   }
 }
 
-.immatriculation-badge {
+.gps-badge {
   display: inline-block;
-  background-color: #fef3c7;
-  color: #d97706;
-  font-weight: 700;
-  font-size: 11px;
-  padding: 6px 12px;
-  border-radius: 20px;
+  font-size: 12px;
+  background: #ede9fe;
+  color: #6d28d9;
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-family: monospace;
+  font-weight: 600;
 }
+
+.text-muted { color: #94a3b8; }
 
 .statut-badge {
   display: inline-block;
@@ -397,22 +236,12 @@ app-sidebar {
   padding: 6px 12px;
   border-radius: 20px;
 
-  &.statut-disponible {
+  &.statut-active {
     background-color: #dcfce7;
     color: #166534;
   }
 
-  &.statut-en-service {
-    background-color: #dbeafe;
-    color: #1e40af;
-  }
-
-  &.statut-maintenance {
-    background-color: #fef3c7;
-    color: #92400e;
-  }
-
-  &.statut-indisponible {
+  &.statut-inactive {
     background-color: #fee2e2;
     color: #991b1b;
   }
@@ -444,25 +273,29 @@ app-sidebar {
     font-size: 18px;
   }
 
+  &.view {
+    color: #64748b;
+    &:hover { background-color: #ede9fe; color: #6d28d9; }
+  }
+
   &.edit {
     color: #64748b;
-    &:hover {
-      background-color: #e0f2fe;
-      color: #0369a1;
-    }
+    &:hover { background-color: #e0f2fe; color: #0369a1; }
+  }
+
+  &.statut {
+    color: #64748b;
+    &:hover { background-color: #f1f5f9; color: #334155; }
   }
 
   &.delete {
     color: #64748b;
-    &:hover {
-      background-color: #fee2e2;
-      color: #b91c1c;
-    }
+    &:hover { background-color: #fee2e2; color: #b91c1c; }
   }
 }
 
 // =============================================
-// 🎛️ PAGINATION
+// PAGINATION
 // =============================================
 .pagination-container {
   display: flex;
@@ -529,7 +362,7 @@ app-sidebar {
 .text-center { text-align: center; }
 
 // =============================================
-// 🔲 MODALES INTERNES (Backdrop & Formulaires)
+// MODALES (identiques à Vehicules/Trajets)
 // =============================================
 .custom-modal-backdrop {
   position: fixed;
@@ -550,10 +383,11 @@ app-sidebar {
   border-radius: 24px;
   width: 100%;
   max-width: 480px;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  overflow: hidden;
+  animation: modalFadeIn 0.25s ease-out;
   max-height: 90vh;
   overflow-y: auto;
-  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
-  animation: modalFadeIn 0.25s ease-out;
 
   .modal-header {
     padding: 20px 24px;
@@ -627,13 +461,12 @@ app-sidebar {
     transition: border-color 0.15s ease;
     background-color: #ffffff;
 
-    &:focus {
-      border-color: #2563eb;
-    }
+    &:focus { border-color: #2563eb; }
   }
 
   input.file-input {
     padding: 8px 0;
+    border: none;
     cursor: pointer;
 
     &::file-selector-button {
@@ -646,26 +479,58 @@ app-sidebar {
       font-size: 13px;
       cursor: pointer;
       transition: all 0.15s ease;
+      margin-right: 10px;
 
-      &:hover {
-        background-color: #e2e8f0;
-      }
+      &:hover { background-color: #e2e8f0; }
+    }
+  }
+}
+
+.field-hint {
+  font-size: 11px;
+  color: #94a3b8;
+  margin-top: 2px;
+}
+
+// =============================================
+// SAISIE GPS ASSISTÉE
+// =============================================
+.gps-group {
+  .gps-assist-row {
+    display: flex;
+    gap: 8px;
+
+    input {
+      flex: 1;
     }
   }
 
-  .image-preview {
-    margin-top: 12px;
-    border-radius: 10px;
-    overflow: hidden;
-    border: 1px solid #e2e8f0;
-
-    img {
-      width: 100%;
-      height: 200px;
-      object-fit: cover;
-      display: block;
-    }
+  .gps-manual-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin-top: 4px;
   }
+}
+
+.btn-gps-assist {
+  width: 42px;
+  height: 42px;
+  min-width: 42px;
+  border-radius: 10px;
+  border: 1px solid #cbd5e1;
+  background-color: #f8fafc;
+  color: #2563eb;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.15s ease;
+
+  .material-icons { font-size: 20px; }
+
+  &:hover:not([disabled]) { background-color: #eff6ff; border-color: #2563eb; }
+  &[disabled] { opacity: 0.5; cursor: not-allowed; }
 }
 
 .btn-secondary {
@@ -698,9 +563,204 @@ app-sidebar {
 }
 
 // =============================================
-// RESPONSIVE MEDIA QUERIES
+// GALERIE PHOTOS (formulaire + détail)
 // =============================================
+.photos-gallery {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 4px;
+}
 
+.photo-thumb {
+  position: relative;
+  width: 84px;
+  height: 84px;
+  border-radius: 10px;
+  overflow: hidden;
+  border: 1px solid #e2e8f0;
+
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+
+  .photo-remove {
+    position: absolute;
+    top: 3px;
+    right: 3px;
+    width: 20px;
+    height: 20px;
+    border: none;
+    border-radius: 50%;
+    background: rgba(15, 23, 42, .65);
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    padding: 0;
+
+    .material-icons { font-size: 14px; }
+    &:hover { background: rgba(220, 38, 38, .85); }
+  }
+}
+
+.detail-photos {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+
+  .detail-label {
+    font-size: 11px;
+    font-weight: 800;
+    color: #94a3b8;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+}
+
+// =============================================
+// MODALE DE DÉTAIL (voir plus)
+// =============================================
+.photo-carousel {
+  position: relative;
+  width: 100%;
+  height: 220px;
+  border-radius: 16px;
+  overflow: hidden;
+  background-color: #f1f5f9;
+
+  .carousel-image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+
+  .carousel-arrow {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    border: none;
+    background: rgba(15, 23, 42, 0.55);
+    color: #ffffff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: background-color 0.15s ease;
+
+    &:hover { background: rgba(15, 23, 42, 0.8); }
+    &.prev { left: 10px; }
+    &.next { right: 10px; }
+  }
+
+  .carousel-dots {
+    position: absolute;
+    bottom: 10px;
+    left: 0;
+    right: 0;
+    display: flex;
+    justify-content: center;
+    gap: 6px;
+  }
+
+  .carousel-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.55);
+    cursor: pointer;
+    transition: all 0.15s ease;
+
+    &.active {
+      background: #ffffff;
+      width: 18px;
+      border-radius: 4px;
+    }
+  }
+}
+
+.detail-placeholder {
+  width: 100%;
+  height: 160px;
+  border-radius: 16px;
+
+  .material-icons { font-size: 40px; }
+}
+
+.detail-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #f1f5f9;
+
+  .agence-title {
+    font-size: 16px;
+    font-weight: 800;
+    color: #1e293b;
+  }
+}
+
+.btn-maps-link {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px;
+  border-radius: 10px;
+  background-color: #eff6ff;
+  color: #2563eb;
+  font-weight: 700;
+  font-size: 13px;
+  text-decoration: none;
+  transition: background-color 0.15s ease;
+
+  &:hover { background-color: #dbeafe; }
+  .material-icons { font-size: 18px; }
+}
+
+.detail-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.detail-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+
+  &.detail-item-full {
+    grid-column: 1 / -1;
+  }
+
+  .detail-label {
+    font-size: 11px;
+    font-weight: 800;
+    color: #94a3b8;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  .detail-value {
+    font-size: 14px;
+    font-weight: 600;
+    color: #1e293b;
+  }
+}
+
+// =============================================
+// RESPONSIVE
+// =============================================
 @media (max-width: 768px) {
   .page-body {
     padding: 24px 16px;
@@ -717,13 +777,13 @@ app-sidebar {
     }
   }
 
-  .table-container-vehicules {
+  .table-container-agences {
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
   }
 
-  .custom-vehicules-table {
-    min-width: 700px;
+  .custom-agences-table {
+    min-width: 900px;
   }
 
   .pagination-container {
@@ -732,32 +792,10 @@ app-sidebar {
     gap: 12px;
   }
 
-  .custom-modal-backdrop {
-    padding: 16px;
-  }
-
   .custom-modal-box {
     max-width: 100%;
     max-height: 95vh;
     border-radius: 16px;
-
-    .modal-header {
-      padding: 16px 20px;
-    }
-
-    .modal-body {
-      padding: 20px;
-    }
-
-    .modal-footer {
-      padding: 16px 20px;
-      flex-direction: column;
-      gap: 12px;
-
-      button {
-        width: 100%;
-      }
-    }
   }
 }
 
@@ -782,4 +820,3 @@ app-sidebar {
     margin-left: 0;
   }
 }
-

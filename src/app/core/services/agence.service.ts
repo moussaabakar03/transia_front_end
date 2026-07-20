@@ -34,4 +34,8 @@ export class AgenceService {
   delete(id: string): Observable<void> {
     return this.http.delete<void>(`${this.url}/${id}`);
   }
+
+  updateStatut(id: string, statut: boolean): Observable<Agence> {
+    return this.http.put<Agence>(`${this.url}/${id}/statut`, { statut });
+  }
 }

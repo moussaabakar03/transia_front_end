@@ -10,6 +10,7 @@ import { VilleService } from '../../../core/services/transport/ville-service';
 import { AgenceService } from '../../../core/services/agence.service';
 import { Ville } from '../../../shared/models/ville';
 import { Agence } from '../../../shared/models/agence.model';
+import { CurrentUserService } from '../../../core/services/current-user.service';
 
 const VEHICULE_VIDE: VehiculePayload = {
   marque: '',
@@ -70,13 +71,18 @@ export class Vehicules implements OnInit {
   // Enum pour le template
   StatutVehicule = StatutVehicule;
 
+  // Droits d'écriture (SUPER_ADMIN/ADMIN_AGENCE, cf. VehiculeController côté backend)
+  peutGerer: boolean = false;
+
   constructor(
     private vehiculeService: VehiculeService,
     private villeService: VilleService,
-    private agenceService: AgenceService
+    private agenceService: AgenceService,
+    private currentUser: CurrentUserService
   ) {}
 
   ngOnInit(): void {
+    this.peutGerer = this.currentUser.peutGererTransport();
     this.loadVehicules();
     this.loadVillesEtAgences();
   }

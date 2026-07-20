@@ -42,6 +42,12 @@ export class CurrentUserService {
   /** Un SUPER_ADMIN ou un ADMIN_AGENCE peut gérer les comptes utilisateurs */
   peutGererComptes(): boolean { return this.isSuperAdmin() || this.isAdminAgence(); }
 
+  /** Un SUPER_ADMIN ou un ADMIN_AGENCE peut créer/modifier/supprimer véhicules et trajets (AGENT_ACCUEIL est lecture seule) */
+  peutGererTransport(): boolean { return this.isSuperAdmin() || this.isAdminAgence(); }
+
+  /** Les villes sont une référence réseau partagée, gérée uniquement par SUPER_ADMIN */
+  peutGererVilles(): boolean { return this.isSuperAdmin(); }
+
   /** Retourne true si l'utilisateur doit voir toutes les agences (pas seulement la sienne) */
   isGlobalView(): boolean { return this.isSuperAdmin(); }
 

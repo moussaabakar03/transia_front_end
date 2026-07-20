@@ -11,10 +11,12 @@
           <p>Configurez et listez les véhicules de votre flotte de transport.</p>
         </div>
         
-        <button class="btn-blue-action-local" (click)="ouvrirCreation()">
-          <span class="material-icons">directions_car</span>
-          NOUVEAU VÉHICULE
-        </button>
+        @if (peutGerer) {
+          <button class="btn-blue-action-local" (click)="ouvrirCreation()">
+            <span class="material-icons">directions_car</span>
+            NOUVEAU VÉHICULE
+          </button>
+        }
       </div>
 
       <!-- Barre de Recherche -->
@@ -79,12 +81,14 @@
                     <button class="btn-table-action view" (click)="ouvrirDetail(vehicule)" title="Voir plus">
                       <span class="material-icons">visibility</span>
                     </button>
-                    <button class="btn-table-action edit" (click)="ouvrirEdit(vehicule)" title="Modifier le véhicule">
-                      <span class="material-icons">edit</span>
-                    </button>
-                    <button class="btn-table-action delete" (click)="supprimerVehicule(vehicule.id, vehicule.immatriculation)" title="Supprimer le véhicule">
-                      <span class="material-icons">delete</span>
-                    </button>
+                    @if (peutGerer) {
+                      <button class="btn-table-action edit" (click)="ouvrirEdit(vehicule)" title="Modifier le véhicule">
+                        <span class="material-icons">edit</span>
+                      </button>
+                      <button class="btn-table-action delete" (click)="supprimerVehicule(vehicule.id, vehicule.immatriculation)" title="Supprimer le véhicule">
+                        <span class="material-icons">delete</span>
+                      </button>
+                    }
                   </div>
                 </td>
               </tr>
@@ -346,10 +350,12 @@
     </div>
     <div class="modal-footer">
       <button class="btn-secondary" (click)="fermerDetail()">Fermer</button>
-      <button class="btn-primary" (click)="fermerDetail(); ouvrirEdit(vehiculeVoir)">
-        <span class="material-icons">edit</span>
-        Modifier
-      </button>
+      @if (peutGerer) {
+        <button class="btn-primary" (click)="fermerDetail(); ouvrirEdit(vehiculeVoir)">
+          <span class="material-icons">edit</span>
+          Modifier
+        </button>
+      }
     </div>
   </div>
 </div>

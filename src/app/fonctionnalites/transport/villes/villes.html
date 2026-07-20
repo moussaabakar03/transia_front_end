@@ -11,10 +11,12 @@
           <p>Configurez et listez les zones géographiques, régions et gares de départ/arrivée de vos trajets.</p>
         </div>
         
-        <button class="btn-blue-action-local" (click)="ouvrirCreation()">
-          <span class="material-icons">location_city</span>
-          NOUVELLE VILLE
-        </button>
+        @if (peutGerer) {
+          <button class="btn-blue-action-local" (click)="ouvrirCreation()">
+            <span class="material-icons">location_city</span>
+            NOUVELLE VILLE
+          </button>
+        }
       </div>
 
       <!-- Barre de Recherche -->
@@ -36,6 +38,7 @@
               <th>ID VILLE</th>
               <th>NOM DE LA VILLE</th>
               <th>RÉGION / SECTEUR</th>
+              <th>PAYS</th>
               <th class="text-center">ACTIONS</th>
             </tr>
           </thead>
@@ -54,20 +57,25 @@
                 <td>
                   <span class="region-badge">{{ ville.region }}</span>
                 </td>
+                <td>{{ ville.pays || '—' }}</td>
                 <td class="text-center actions-cell">
-                  <div class="actions-wrapper">
-                    <button class="btn-table-action edit" (click)="ouvrirEdit(ville)" title="Modifier la ville">
-                      <span class="material-icons">edit</span>
-                    </button>
-                    <button class="btn-table-action delete" (click)="supprimerVille(ville.id, ville.nomVille)" title="Supprimer la ville">
-                      <span class="material-icons">delete</span>
-                    </button>
-                  </div>
+                  @if (peutGerer) {
+                    <div class="actions-wrapper">
+                      <button class="btn-table-action edit" (click)="ouvrirEdit(ville)" title="Modifier la ville">
+                        <span class="material-icons">edit</span>
+                      </button>
+                      <button class="btn-table-action delete" (click)="supprimerVille(ville.id, ville.nomVille)" title="Supprimer la ville">
+                        <span class="material-icons">delete</span>
+                      </button>
+                    </div>
+                  } @else {
+                    <span class="text-muted">—</span>
+                  }
                 </td>
               </tr>
             } @empty {
               <tr>
-                <td colspan="4" class="text-center py-8">
+                <td colspan="5" class="text-center py-8">
                   <div class="empty-state">
                     <span class="material-icons font-size-xl">map</span>
                     <p>Aucune ville ne correspond à votre recherche.</p>
@@ -123,6 +131,10 @@
         <label>Région / Province</label>
         <input type="text" [(ngModel)]="nouvelleVille.region" placeholder="Ex: Maritime, Île-de-France...">
       </div>
+      <div class="form-group">
+        <label>Pays</label>
+        <input type="text" [(ngModel)]="nouvelleVille.pays" placeholder="Ex: Togo">
+      </div>
     </div>
     <div class="modal-footer">
       <button class="btn-secondary" (click)="afficherCreationVille = false">Annuler</button>
@@ -150,6 +162,10 @@
       <div class="form-group">
         <label>Région / Province</label>
         <input type="text" [(ngModel)]="villeEditer.region">
+      </div>
+      <div class="form-group">
+        <label>Pays</label>
+        <input type="text" [(ngModel)]="villeEditer.pays">
       </div>
     </div>
     <div class="modal-footer">

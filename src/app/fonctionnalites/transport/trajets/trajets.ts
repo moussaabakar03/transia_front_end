@@ -67,7 +67,11 @@ export class Trajets implements OnInit {
   // Contexte agent connecté
   agentVilleId:  string | null = null;
   agentVilleNom: string | null = null;
+  agentAgenceId: string | null = null;
   isAdmin = false;
+
+  // Droits d'écriture (SUPER_ADMIN/ADMIN_AGENCE, cf. TrajetController côté backend)
+  peutGerer: boolean = false;
 
   constructor(
     private trajetService:   TrajetService,
@@ -81,7 +85,9 @@ export class Trajets implements OnInit {
     const ctx        = this.currentUser.getContext();
     this.agentVilleId  = ctx?.villeId  ?? null;
     this.agentVilleNom = ctx?.villeNom ?? null;
+    this.agentAgenceId = ctx?.agenceId ?? null;
     this.isAdmin       = this.currentUser.isGlobalView();
+    this.peutGerer     = this.currentUser.peutGererTransport();
 
     this.loadTrajets();
     this.loadVilles();
@@ -124,12 +130,19 @@ export class Trajets implements OnInit {
     this.loadChauffeurs(villeId || undefined);
   }
 
-  // Chargement initial depuis l'API
+  // Chargement initial depuis l'API.
+  // GET /trajet n'est volontairement pas filtré par agence côté backend (le client mobile doit
+  // parcourir tous les trajets, toutes agences, pour réserver). Sur ce panneau admin en revanche,
+  // un ADMIN_AGENCE ne doit voir que les trajets de sa propre agence (cohérent avec Vehicules) :
+  // filtrage appliqué ici, côté client.
   loadTrajets(): void {
     this.trajetService.getAll().subscribe({
       next: (data) => {
-        this.tousLesTrajets = data;
-        this.resultatsFiltres = [...data];
+        const visibles = this.isAdmin
+          ? data
+          : data.filter(t => this.agentAgenceId != null && t.agenceId === this.agentAgenceId);
+        this.tousLesTrajets = visibles;
+        this.resultatsFiltres = [...visibles];
         this.totalTrajets = this.resultatsFiltres.length;
         this.pageActuelle = 1;
         this.appliquerPage();
