@@ -26,9 +26,11 @@ export class Trajets implements OnInit {
   // États des modales
   afficherCreationTrajet: boolean = false;
   afficherEditTrajet: boolean = false;
+  afficherDetailTrajet: boolean = false;
 
   // Données éditées / en cours
   trajetEditer: Trajet | null = null;
+  trajetVoir: Trajet | null = null;
   nouveauTrajet: any = {
     villeDepartId: '',
     villeArriveeId: '',
@@ -84,7 +86,7 @@ export class Trajets implements OnInit {
     this.loadTrajets();
     this.loadVilles();
     this.loadVehicules();
-    this.loadChauffeurs();
+    this.loadChauffeurs(this.agentVilleId ?? undefined);
   }
 
   // Charger les listes pour les select dropdowns
@@ -106,13 +108,20 @@ export class Trajets implements OnInit {
     });
   }
 
-  loadChauffeurs(): void {
-    this.userService.getChauffeurs().subscribe({
+  loadChauffeurs(villeId?: string): void {
+    this.userService.getChauffeurs(villeId).subscribe({
       next: (data: any[]) => {
         this.chauffeurs = data;
       },
       error: (err: any) => console.error('Erreur de chargement des chauffeurs', err)
     });
+  }
+
+  // Le chauffeur doit être disponible dans la ville de départ choisie : on recharge la liste
+  // et on réinitialise la sélection si elle ne correspond plus (le backend valide de toute façon à la soumission).
+  onVilleDepartChange(villeId: string, cible: { chauffeurId?: string | null }): void {
+    cible.chauffeurId = null;
+    this.loadChauffeurs(villeId || undefined);
   }
 
   // Chargement initial depuis l'API
@@ -178,15 +187,15 @@ export class Trajets implements OnInit {
   supprimerTrajet(id: string | undefined, description: string): void {
     if (!id) return;
     
-    if (confirm(`Voulez-vous vraiment supprimer le trajet ${description} ?`)) {
+    if (confirm(`Voulez-vous annuler le trajet ${description} ? Le véhicule sera libéré.`)) {
       this.trajetService.delete(id).subscribe({
         next: () => {
-          alert(`Le trajet a été supprimé.`);
+          alert(`Le trajet a été annulé.`);
           this.loadTrajets();
         },
         error: (err) => {
-          console.error('Erreur lors de la suppression', err);
-          alert('Impossible de supprimer ce trajet.');
+          console.error('Erreur lors de l\'annulation', err);
+          alert('Impossible d\'annuler ce trajet.');
         }
       });
     }
@@ -265,6 +274,17 @@ export class Trajets implements OnInit {
       },
       error: (err) => console.error('Erreur lors de la modification', err)
     });
+  }
+
+  // Voir le détail d'un trajet
+  ouvrirDetail(trajet: Trajet): void {
+    this.trajetVoir = trajet;
+    this.afficherDetailTrajet = true;
+  }
+
+  fermerDetail(): void {
+    this.afficherDetailTrajet = false;
+    this.trajetVoir = null;
   }
 
   getStatutLibelle(statut: StatutTrajet): string {

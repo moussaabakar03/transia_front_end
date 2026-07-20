@@ -270,3 +270,28 @@ app-sidebar {
     gap: 10px;
   }
 }
+
+
+.btn-blue-action-local {
+  background-color: #2563eb;
+  color: #ffffff;
+  border: none;
+  border-radius: 14px;
+  padding: 12px 24px;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.15);
+  white-space: nowrap;
+  transition: all 0.2s ease;
+
+  &:hover {
+    background-color: #1d4ed8;
+    transform: translateY(-1px);
+    box-shadow: 0 6px 16px rgba(37, 99, 235, 0.25);
+  }
+}

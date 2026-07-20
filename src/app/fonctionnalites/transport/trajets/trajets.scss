@@ -252,6 +252,14 @@ app-sidebar {
     font-size: 18px;
   }
 
+  &.view {
+    color: #64748b;
+    &:hover {
+      background-color: #ede9fe;
+      color: #6d28d9;
+    }
+  }
+
   &.edit {
     color: #64748b;
     &:hover {
@@ -442,6 +450,12 @@ app-sidebar {
   }
 }
 
+.field-hint {
+  font-size: 11px;
+  color: #94a3b8;
+  margin-top: 2px;
+}
+
 .btn-secondary {
   background-color: #ffffff;
   border: 1px solid #e2e8f0;
@@ -494,6 +508,61 @@ app-sidebar {
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
+// =============================================
+// MODALE DE DÉTAIL (voir plus)
+// =============================================
+.detail-trajet-itineraire {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  background-color: #f8fafc;
+  border-radius: 14px;
+  margin-bottom: 4px;
+
+  .itineraire-ville {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-weight: 700;
+    color: #1e293b;
+    font-size: 14px;
+
+    .location-icon { color: #3b82f6; font-size: 18px; }
+  }
+
+  .itineraire-arrow {
+    color: #94a3b8;
+    font-size: 18px;
+  }
+}
+
+.detail-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.detail-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+
+  .detail-label {
+    font-size: 11px;
+    font-weight: 800;
+    color: #94a3b8;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  .detail-value {
+    font-size: 14px;
+    font-weight: 600;
+    color: #1e293b;
+  }
+}
+
 @keyframes modalFadeIn {
   from { opacity: 0; transform: translateY(12px); }
   to { opacity: 1; transform: translateY(0); }

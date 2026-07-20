@@ -57,8 +57,9 @@ export class UserService {
     return this.http.delete<void>(`${this.baseUrl}/users/${publicId}`);
   }
 
-  getChauffeurs(): Observable<UserResponse[]> {
-    return this.http.get<UserResponse[]>(`${this.baseUrl}/utilisateur/chauffeurs`);
+  getChauffeurs(villeId?: string): Observable<UserResponse[]> {
+    const url = villeId ? `${this.baseUrl}/utilisateur/chauffeurs?villeId=${villeId}` : `${this.baseUrl}/utilisateur/chauffeurs`;
+    return this.http.get<UserResponse[]>(url);
   }
 
   getLivreurs(): Observable<UserResponse[]> {
