@@ -28,8 +28,7 @@ export class ReservationService {
   }
 
   annuler(id: string): Observable<any> {
-    // Prévoir un endpoint backend : PUT /{id}/annuler
-    return this.http.put(`${this.baseUrl}/${id}/annuler`, {});
+    return this.http.patch(`${this.baseUrl}/${id}/annuler`, {});
   }
 
   getPlacesTrajet(trajetId: string): Observable<number> {

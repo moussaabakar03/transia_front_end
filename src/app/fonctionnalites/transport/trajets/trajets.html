@@ -314,7 +314,7 @@
 <!-- Modale de détail (voir plus) -->
 @if (afficherDetailTrajet && trajetVoir) {
 <div class="custom-modal-backdrop">
-  <div class="custom-modal-box">
+  <div class="custom-modal-box detail-trajet-modal">
     <div class="modal-header">
       <h2>Détail du trajet</h2>
       <button class="close-icon-btn" (click)="fermerDetail()">
@@ -373,6 +373,66 @@
           <span class="detail-value">{{ trajetVoir.tarif }} FCFA</span>
         </div>
       </div>
+
+      <!-- Statistiques du trajet -->
+      <div class="detail-section-title">Occupation &amp; recettes</div>
+      @if (chargementReservationsTrajet) {
+        <div class="detail-loading">Chargement…</div>
+      } @else if (statsTrajet) {
+        <div class="stats-grid">
+          <div class="stat-tile">
+            <span class="stat-value">{{ statsTrajet.placesReservees }} / {{ statsTrajet.capacite }}</span>
+            <span class="stat-label">Places réservées</span>
+          </div>
+          <div class="stat-tile">
+            <span class="stat-value">{{ statsTrajet.placesDisponibles }}</span>
+            <span class="stat-label">Places disponibles</span>
+          </div>
+          <div class="stat-tile">
+            <span class="stat-value" [class.stat-value-warn]="statsTrajet.tauxRemplissage >= 90">{{ statsTrajet.tauxRemplissage }}%</span>
+            <span class="stat-label">Taux de remplissage</span>
+          </div>
+          <div class="stat-tile">
+            <span class="stat-value">{{ statsTrajet.montantEncaisse | number }} FCFA</span>
+            <span class="stat-label">Montant encaissé</span>
+          </div>
+        </div>
+      }
+
+      <!-- Réservations liées -->
+      <div class="detail-section-title">Réservations liées ({{ reservationsDuTrajet.length }})</div>
+      @if (chargementReservationsTrajet) {
+        <div class="detail-loading">Chargement…</div>
+      } @else if (reservationsDuTrajet.length === 0) {
+        <div class="detail-empty">Aucune réservation pour ce trajet.</div>
+      } @else {
+        <div class="reservations-liees-table">
+          <table>
+            <thead>
+              <tr>
+                <th>Responsable</th>
+                <th>Places</th>
+                <th>Type</th>
+                <th>Statut</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (res of reservationsDuTrajet; track res.id) {
+                <tr>
+                  <td>{{ res.nomResponsable || '—' }}</td>
+                  <td>{{ res.nombrePlace }}</td>
+                  <td>{{ res.typeReservation === 'EN_LIGNE' ? 'En ligne' : 'Présentiel' }}</td>
+                  <td>
+                    <span class="statut-badge-sm" [ngClass]="'statut-' + res.statut.toLowerCase()">
+                      {{ getStatutReservationLibelle(res.statut) }}
+                    </span>
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
     </div>
     <div class="modal-footer">
       <button class="btn-secondary" (click)="fermerDetail()">Fermer</button>

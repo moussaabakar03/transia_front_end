@@ -6,7 +6,7 @@ export enum ModePaiement {
 }
 
 export interface PaiementPayload {
-  reservationId: { id: string };   
+  reservationId: string;
   montantVerse: number;
   reference: string;
   modePaiement: ModePaiement;
@@ -14,7 +14,7 @@ export interface PaiementPayload {
 
 export interface Paiement {
   id: string;
-  reservationId: { id: string; nomResponsable?: string };
+  reservationId: string;
   montantVerse: number;
   reference: string;
   modePaiement: ModePaiement;

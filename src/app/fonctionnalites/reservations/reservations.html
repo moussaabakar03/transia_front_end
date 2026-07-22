@@ -109,9 +109,9 @@
               <!-- Type -->
               <td>
                 <span class="type-badge"
-                      [class.type-enligne]="res.typeReservation === 0"
-                      [class.type-presentiel]="res.typeReservation !== 0">
-                  {{ res.typeReservation === 0 ? 'En ligne' : 'Présentiel' }}
+                      [class.type-enligne]="res.typeReservation === 'EN_LIGNE'"
+                      [class.type-presentiel]="res.typeReservation !== 'EN_LIGNE'">
+                  {{ res.typeReservation === 'EN_LIGNE' ? 'En ligne' : 'Présentiel' }}
                 </span>
               </td>
 
@@ -153,27 +153,25 @@
             </tr>
           </tbody>
         </table>
+      </div>
 
-        <!-- Pagination -->
-        <div *ngIf="filteredReservations.length > 0" class="pagination-container">
-          <div class="pagination-info">
-            <!-- Affichage de {{ (currentPage - 1) * itemsPerPage + 1 }} à {{ Math.min(currentPage * itemsPerPage, filteredReservations.length) }} sur {{ filteredReservations.length }} réservation(s) -->
-            Affichage de {{ (currentPage - 1) * itemsPerPage + 1 }} à {{ filteredReservations.length }} réservation(s)
-
-          </div>
-          <div class="pagination-buttons">
-            <button class="btn-pag" (click)="changePage(currentPage - 1)" [disabled]="currentPage === 1">
-              <span class="material-icons">chevron_left</span>
-            </button>
-            <button class="btn-pag" *ngFor="let page of getPaginationPages()" 
-                    [class.active]="page === currentPage"
-                    (click)="changePage(page)">
-              {{ page }}
-            </button>
-            <button class="btn-pag" (click)="changePage(currentPage + 1)" [disabled]="currentPage === totalPages">
-              <span class="material-icons">chevron_right</span>
-            </button>
-          </div>
+      <!-- Pagination -->
+      <div *ngIf="filteredReservations.length > 0" class="pagination-container">
+        <span class="pagination-info">
+          Affichage de {{ paginatedReservations.length }} sur {{ filteredReservations.length }} réservation(s)
+        </span>
+        <div class="pagination-buttons">
+          <button class="btn-pag" (click)="changePage(currentPage - 1)" [disabled]="currentPage === 1">
+            <span class="material-icons">chevron_left</span>
+          </button>
+          <button class="btn-pag" *ngFor="let page of getPaginationPages()"
+                  [class.active]="page === currentPage"
+                  (click)="changePage(page)">
+            {{ page }}
+          </button>
+          <button class="btn-pag" (click)="changePage(currentPage + 1)" [disabled]="currentPage === totalPages">
+            <span class="material-icons">chevron_right</span>
+          </button>
         </div>
       </div>
     </div>
@@ -237,9 +235,9 @@
               <div class="detail-item-label"><span class="material-icons">label</span> Type</div>
               <div class="detail-item-value">
                 <span class="type-badge"
-                      [class.type-enligne]="form.typeReservation === 0"
-                      [class.type-presentiel]="form.typeReservation !== 0">
-                  {{ form.typeReservation === 0 ? 'En ligne' : 'Présentiel' }}
+                      [class.type-enligne]="form.typeReservation === 'EN_LIGNE'"
+                      [class.type-presentiel]="form.typeReservation !== 'EN_LIGNE'">
+                  {{ form.typeReservation === 'EN_LIGNE' ? 'En ligne' : 'Présentiel' }}
                 </span>
               </div>
             </div>
@@ -419,10 +417,11 @@
                 </div>
 
                 <div *ngIf="saisirNomsPassagers === true">
-                  <div *ngFor="let champ of champsPassagers; let j = index"
+                  <div *ngFor="let champ of champsPassagers; let j = index; trackBy: trackByIndex"
                        class="passager-input-row">
                     <span class="badge-number">{{ j+2 }}</span>
                     <input type="text" class="form-control form-control-sm"
+                           [name]="'passager' + j"
                            [placeholder]="'Nom du passager ' + (j+2) + ' (optionnel)'"
                            [(ngModel)]="champsPassagers[j]"
                            [disabled]="isSubmitting" />

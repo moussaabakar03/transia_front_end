@@ -563,6 +563,109 @@ app-sidebar {
   }
 }
 
+// Modale détail trajet : plus large que les autres modales pour accueillir stats + réservations liées
+.detail-trajet-modal {
+  max-width: 640px !important;
+}
+
+.detail-section-title {
+  margin-top: 8px;
+  font-size: 12px;
+  font-weight: 800;
+  color: #475569;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding-top: 16px;
+  border-top: 1px solid #f1f5f9;
+}
+
+.detail-loading,
+.detail-empty {
+  font-size: 13px;
+  color: #94a3b8;
+  padding: 10px 0;
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+}
+
+.stat-tile {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 12px;
+  text-align: center;
+
+  .stat-value {
+    font-size: 16px;
+    font-weight: 800;
+    color: #1e293b;
+
+    &.stat-value-warn {
+      color: #d97706;
+    }
+  }
+
+  .stat-label {
+    font-size: 10px;
+    font-weight: 700;
+    color: #94a3b8;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+  }
+}
+
+.reservations-liees-table {
+  max-height: 220px;
+  overflow-y: auto;
+  border: 1px solid #f1f5f9;
+  border-radius: 12px;
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+
+    thead th {
+      position: sticky;
+      top: 0;
+      background: #f8fafc;
+      color: #94a3b8;
+      font-size: 10px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+      padding: 8px 12px;
+      text-align: left;
+    }
+
+    tbody td {
+      padding: 8px 12px;
+      border-top: 1px solid #f1f5f9;
+      color: #334155;
+    }
+  }
+}
+
+.statut-badge-sm {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 10px;
+
+  &.statut-en_attente { background: #fef3c7; color: #92400e; }
+  &.statut-confirmee   { background: #dcfce7; color: #166534; }
+  &.statut-annulee     { background: #fee2e2; color: #991b1b; }
+  &.statut-expiree     { background: #e2e8f0; color: #475569; }
+}
+
 @keyframes modalFadeIn {
   from { opacity: 0; transform: translateY(12px); }
   to { opacity: 1; transform: translateY(0); }

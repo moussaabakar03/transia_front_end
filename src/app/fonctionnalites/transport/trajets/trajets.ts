@@ -11,6 +11,8 @@ import { UserService } from '../../../core/services/user-service';
 import { CurrentUserService } from '../../../core/services/current-user.service';
 import { Ville } from '../../../shared/models/ville';
 import { Vehicule } from '../../../shared/models/vehicule';
+import { Reservation, StatutReservation } from '../../../shared/models/reservation.model';
+import { ReservationService } from '../../../core/services/reservation-service';
 
 @Component({
   selector: 'app-trajets',
@@ -31,6 +33,19 @@ export class Trajets implements OnInit {
   // Données éditées / en cours
   trajetEditer: Trajet | null = null;
   trajetVoir: Trajet | null = null;
+
+  // Réservations liées au trajet consulté (modale détail) + statistiques dérivées
+  reservationsDuTrajet: Reservation[] = [];
+  chargementReservationsTrajet = false;
+  statsTrajet: {
+    placesReservees: number;
+    placesDisponibles: number;
+    capacite: number;
+    tauxRemplissage: number;
+    montantEncaisse: number;
+    nombreReservations: number;
+  } | null = null;
+  readonly StatutReservation = StatutReservation;
   nouveauTrajet: any = {
     villeDepartId: '',
     villeArriveeId: '',
@@ -74,11 +89,12 @@ export class Trajets implements OnInit {
   peutGerer: boolean = false;
 
   constructor(
-    private trajetService:   TrajetService,
-    private villeService:    VilleService,
-    private vehiculeService: VehiculeService,
-    private userService:     UserService,
-    private currentUser:     CurrentUserService
+    private trajetService:       TrajetService,
+    private villeService:        VilleService,
+    private vehiculeService:     VehiculeService,
+    private userService:         UserService,
+    private currentUser:         CurrentUserService,
+    private reservationService:  ReservationService
   ) {}
 
   ngOnInit(): void {
@@ -289,15 +305,68 @@ export class Trajets implements OnInit {
     });
   }
 
-  // Voir le détail d'un trajet
+  // Voir le détail d'un trajet, avec ses réservations liées et quelques statistiques dérivées
   ouvrirDetail(trajet: Trajet): void {
     this.trajetVoir = trajet;
     this.afficherDetailTrajet = true;
+    this.reservationsDuTrajet = [];
+    this.statsTrajet = null;
+
+    if (!trajet.id) return;
+
+    this.chargementReservationsTrajet = true;
+    this.reservationService.getByTrajet(trajet.id).subscribe({
+      next: (reservations) => {
+        this.reservationsDuTrajet = reservations;
+        this.statsTrajet = this.calculerStatsTrajet(trajet, reservations);
+        this.chargementReservationsTrajet = false;
+      },
+      error: (err) => {
+        console.error('Erreur de chargement des réservations du trajet', err);
+        this.chargementReservationsTrajet = false;
+      }
+    });
+  }
+
+  // Places "occupantes" = réservations non annulées/expirées (même règle que le backend pour la
+  // vérification de capacité) ; montant encaissé = paiements des réservations effectivement confirmées.
+  private calculerStatsTrajet(trajet: Trajet, reservations: Reservation[]) {
+    const occupantes = reservations.filter(r =>
+      r.statut === StatutReservation.EN_ATTENTE || r.statut === StatutReservation.CONFIRMEE
+    );
+    const placesReservees = occupantes.reduce((total, r) => total + (r.nombrePlace || 0), 0);
+    const capacite = trajet.vehicule?.capacite || 0;
+    const placesDisponibles = Math.max(0, capacite - placesReservees);
+    const tauxRemplissage = capacite > 0 ? Math.round((placesReservees / capacite) * 100) : 0;
+    const montantEncaisse = reservations
+      .filter(r => r.statut === StatutReservation.CONFIRMEE)
+      .reduce((total, r) => total + (r.paiement?.montantVerse || 0), 0);
+
+    return {
+      placesReservees,
+      placesDisponibles,
+      capacite,
+      tauxRemplissage,
+      montantEncaisse,
+      nombreReservations: reservations.length
+    };
+  }
+
+  getStatutReservationLibelle(statut: StatutReservation): string {
+    switch (statut) {
+      case StatutReservation.EN_ATTENTE: return 'En attente';
+      case StatutReservation.CONFIRMEE:  return 'Confirmée';
+      case StatutReservation.ANNULEE:    return 'Annulée';
+      case StatutReservation.EXPIREE:    return 'Expirée';
+      default: return 'Inconnu';
+    }
   }
 
   fermerDetail(): void {
     this.afficherDetailTrajet = false;
     this.trajetVoir = null;
+    this.reservationsDuTrajet = [];
+    this.statsTrajet = null;
   }
 
   getStatutLibelle(statut: StatutTrajet): string {
