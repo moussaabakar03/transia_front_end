@@ -8,14 +8,11 @@ import { ModePaiement, PaiementPayload } from '../../shared/models/paiement';
 import { Sidebar } from '../../shared/composants/sidebar/sidebar';
 import { Header } from '../../shared/composants/header/header';
 import { Trajet } from '../../shared/models/trajet';
-import { UserResponse } from '../../shared/models/users';
 import { ReservationService } from '../../core/services/reservation-service';
 import { TrajetService } from '../../core/services/transport/trajet-service';
-import { UserService } from '../../core/services/user-service';
 import { PaiementService } from '../../core/services/paiement-service';
 
 interface ReservationFormInterface {
-  userId: number | null;
   trajetId: string;
   nombrePlace: number;
   nomResponsable: string;
@@ -59,7 +56,6 @@ export class Reservations implements OnInit {
   reservations: Reservation[] = [];
   filteredReservations: Reservation[] = [];
   trajets: Trajet[] = [];
-  users: UserResponse[] = [];
 
   // Pagination
   currentPage: number = 1;
@@ -126,7 +122,6 @@ export class Reservations implements OnInit {
   constructor(
     private reservationService: ReservationService,
     private trajetService: TrajetService,
-    private userService: UserService,
     private paiementService: PaiementService,
     private cd: ChangeDetectorRef
   ) {}
@@ -137,13 +132,11 @@ export class Reservations implements OnInit {
     this.isLoading = true;
     forkJoin({
       reservations: this.reservationService.getAll(),
-      trajets:      this.trajetService.getAll(),
-      users:        this.userService.getChauffeurs()
+      trajets:      this.trajetService.getAll()
     }).subscribe({
       next: results => {
         this.reservations = results.reservations || [];
         this.trajets      = results.trajets      || [];
-        this.users        = results.users        || [];
         this.applyFilter();
         this.updatePagination();
         this.isLoading = false;
@@ -217,8 +210,12 @@ export class Reservations implements OnInit {
     return reservation.statut === StatutReservation.EN_ATTENTE;
   }
 
+  // Le paiement doit être soldé à 100% avant de pouvoir télécharger/imprimer le billet — pas de
+  // paiement partiel autorisé. Avant cette correction, n'importe quelle réservation avec des billets
+  // (donc même non payée, EN_ATTENTE) pouvait être exportée en PDF.
   canExportPdf(reservation: Reservation): boolean {
-    return !!(reservation.billets && reservation.billets.length > 0);
+    return reservation.statut === StatutReservation.CONFIRMEE &&
+           !!(reservation.billets && reservation.billets.length > 0);
   }
 
   // Méthode appelée quand le trajet change (à brancher sur le select)
@@ -326,6 +323,11 @@ export class Reservations implements OnInit {
 
   supprimerChampPassager(index: number): void { this.champsPassagers.splice(index, 1); }
 
+  // trackBy indispensable ici : sans lui, *ngFor recrée le <input> à chaque frappe (la chaîne
+  // change de valeur à chaque caractère, Angular la traite comme "élément supprimé + recréé"
+  // faute d'identité stable) — le champ perdait le focus après chaque caractère saisi.
+  trackByIndex(index: number): number { return index; }
+
   ajouterChampPassager(): void {
     if (this.champsPassagers.length < this.nombrePassagersSupplementaires)
       this.champsPassagers.push('');
@@ -423,7 +425,7 @@ export class Reservations implements OnInit {
     this.isPaiementSubmitting = true;
 
     const payload: PaiementPayload = {
-      reservationId:  { id: this.reservationEnCours?.id || '' },
+      reservationId:  this.reservationEnCours?.id || '',
       montantVerse:   this.paiementForm.montantVerse!,
       reference:      this.paiementForm.reference.trim() || this.genererReference(),
       modePaiement:   this.paiementForm.modePaiement as ModePaiement,
@@ -460,6 +462,11 @@ export class Reservations implements OnInit {
     const r = this.reservations.find(res => res.id === id);
     if (!r) return;
 
+    if (!this.canExportPdf(r)) {
+      alert('Le paiement doit être réglé intégralement avant de pouvoir télécharger ou imprimer ce billet.');
+      return;
+    }
+
     const trajet = this.getTrajet(r.trajetId);
     const billets = r.billets || [];
 
@@ -484,241 +491,163 @@ export class Reservations implements OnInit {
       qrImages.push(await loadImageBase64(this.getQrUrl(billet.qrCode || '')));
     }
 
-    // ── Constantes mise en page ──
-    const doc   = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
-    const PW    = 210;              // largeur page
-    const PH    = 297;              // hauteur page
-    const M     = 14;               // marge
-    const CW    = PW - 2 * M;       // largeur contenu
+    // ── Format compact façon "vrai billet de transport" : paysage, une page par billet, plutôt
+    // que l'ancien format A4 avec 2 cartes par page (jugé trop grand/mal formaté). Même identité
+    // visuelle que le billet téléchargé côté client mobile (bande bleue, QR à droite, perforation).
+    const TW = 190;   // largeur billet (mm)
+    const TH = 85;    // hauteur billet (mm)
+    const M  = 9;     // marge intérieure gauche/droite du contenu
+    const DIVIDER_X = 143; // séparation contenu / colonne QR
 
-    const BLUE:  [number, number, number] = [20,  50, 120];
-    const GREEN: [number, number, number] = [16, 185, 129];
-    const LIGHT: [number, number, number] = [245, 247, 250];
-    const DARK:  [number, number, number] = [15,  23,  42];
-    const GREY:  [number, number, number] = [100, 116, 139];
-    const WHITE: [number, number, number] = [255, 255, 255];
+    const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: [TW, TH] });
 
-    // ── Dessin de l'en-tête de page ──
-    const drawPageHeader = () => {
-      doc.setFillColor(...BLUE);
-      doc.rect(0, 0, PW, 32, 'F');
+    const BLUE:      [number, number, number] = [20,  50, 120];
+    const DARK:       [number, number, number] = [15,  23,  42];
+    const GREY:       [number, number, number] = [100, 116, 139];
+    const GREY_LIGHT: [number, number, number] = [203, 213, 225];
+    const LIGHT:      [number, number, number] = [245, 247, 250];
+    const GREEN_BG:   [number, number, number] = [220, 252, 231];
+    const GREEN_FG:   [number, number, number] = [22, 101, 52];
+    const ORANGE_BG:  [number, number, number] = [254, 243, 199];
+    const ORANGE_FG:  [number, number, number] = [146, 64, 14];
+    const BADGE_BG:   [number, number, number] = [219, 234, 254];
 
-      doc.setTextColor(...WHITE);
+    const dep = trajet?.villeDepart?.nomVille  || '—';
+    const arr = trajet?.villeArrivee?.nomVille || '—';
+    const trajetLabel = `${dep} → ${arr}`;
+    const dateHeure = [trajet?.dateDepart, trajet?.heureDepart].filter(Boolean).join('  •  ') || '—';
+    const shortRef = (r.id || '').slice(-8).toUpperCase();
+
+    const drawInfo = (label: string, value: string, x: number, y: number) => {
       doc.setFont('helvetica', 'bold');
-      doc.setFontSize(20);
-      doc.text('TRANSIA', M, 14);
-
-      doc.setFont('helvetica', 'normal');
-      doc.setFontSize(9);
-      doc.text('Billet de transport officiel', M, 22);
-
-      // Numéro de réservation (coin droit)
-      doc.setFontSize(8);
-      doc.text(`Rés. #${(r.id || '').slice(-8).toUpperCase()}`, PW - M, 13, { align: 'right' });
-      doc.text(
-        new Date(r.dateReservation).toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' }),
-        PW - M, 21, { align: 'right' }
-      );
-
-      // Ligne décorative
-      doc.setFillColor(...GREEN);
-      doc.rect(0, 32, PW, 2, 'F');
-    };
-
-    // ── Bloc trajet (affiché une fois par page) ──
-    const drawTrajetBlock = (yStart: number): number => {
-      const H = 30;
-      doc.setFillColor(...LIGHT);
-      doc.roundedRect(M, yStart, CW, H, 3, 3, 'F');
-
-      // Icône décorative
-      doc.setFillColor(...BLUE);
-      doc.circle(M + 8, yStart + H / 2, 5, 'F');
-      doc.setFont('helvetica', 'bold');
-      doc.setFontSize(7);
-      doc.setTextColor(...WHITE);
-      doc.text('TR', M + 8, yStart + H / 2 + 2.5, { align: 'center' });
-
-      // Villes
-      const dep = trajet?.villeDepart?.nomVille  || '—';
-      const arr = trajet?.villeArrivee?.nomVille || '—';
-      doc.setTextColor(...DARK);
-      doc.setFont('helvetica', 'bold');
-      doc.setFontSize(13);
-      doc.text(`${dep}`, M + 18, yStart + 11);
-
-      doc.setTextColor(...GREEN);
-      doc.setFontSize(11);
-      doc.text('→', M + 18 + doc.getTextWidth(dep) + 2, yStart + 11);
-
-      doc.setTextColor(...DARK);
-      doc.setFontSize(13);
-      doc.text(`${arr}`, M + 18 + doc.getTextWidth(dep) + 9, yStart + 11);
-
-      // Date / heure / tarif
-      doc.setFont('helvetica', 'normal');
-      doc.setFontSize(8.5);
-      doc.setTextColor(...GREY);
-      const meta = [
-        trajet?.dateDepart   ? `📅 ${trajet.dateDepart}`          : null,
-        trajet?.heureDepart  ? `🕐 ${trajet.heureDepart}`         : null,
-        trajet?.tarif        ? `${trajet.tarif.toLocaleString()} FCFA / place` : null,
-      ].filter(Boolean).join('   ');
-      doc.text(meta, M + 18, yStart + 22);
-
-      return yStart + H + 6;
-    };
-
-    // ── Dessin d'un billet individuel ──
-    const drawBillet = (
-      billet: Billet,
-      qrBase64: string,
-      index: number,
-      yStart: number,
-      totalBillets: number
-    ): number => {
-      const BH = 88;   // hauteur du billet
-
-      // Fond carte
-      doc.setFillColor(255, 255, 255);
-      doc.setDrawColor(...GREEN);
-      doc.setLineWidth(0.4);
-      doc.roundedRect(M, yStart, CW, BH, 4, 4, 'FD');
-
-      // Bande gauche colorée
-      doc.setFillColor(...BLUE);
-      doc.roundedRect(M, yStart, 7, BH, 4, 4, 'F');
-      doc.rect(M + 3, yStart, 4, BH, 'F');   // aplat le coin droit de la bande
-
-      // Numéro de billet (vertical sur la bande)
-      doc.setTextColor(...WHITE);
-      doc.setFont('helvetica', 'bold');
-      doc.setFontSize(7);
-
-      // Entête billet
-      doc.setTextColor(...GREEN);
-      doc.setFontSize(8);
-      doc.setFont('helvetica', 'bold');
-      doc.text(`BILLET ${index + 1} / ${totalBillets}`, M + 11, yStart + 9);
-
-      // Statut pill
-      const isValide   = billet.statut === 'VALIDE';
-      const statutTxt  = isValide ? 'PAYÉ' : 'EN ATTENTE';
-      const statutCol: [number, number, number] = isValide ? GREEN : [245, 158, 11];
-      const pillW = 24, pillH = 6, pillX = M + CW - pillW - 2, pillY = yStart + 4;
-      doc.setFillColor(...statutCol);
-      doc.roundedRect(pillX, pillY, pillW, pillH, 2, 2, 'F');
-      doc.setTextColor(...WHITE);
       doc.setFontSize(6.5);
+      doc.setTextColor(...GREY);
+      doc.text(label, x, y);
       doc.setFont('helvetica', 'bold');
-      doc.text(statutTxt, pillX + pillW / 2, pillY + 4.2, { align: 'center' });
+      doc.setFontSize(11);
+      doc.setTextColor(...DARK);
+      doc.text(value, x, y + 6.5);
+    };
 
-      // Nom passager
+    const drawTicket = (billet: Billet | null, qrBase64: string, index: number, total: number) => {
+      const isValide  = billet?.statut === 'VALIDE';
+      const statutTxt = isValide ? 'PAYÉ' : 'EN ATTENTE';
+      const statutBg  = isValide ? GREEN_BG : ORANGE_BG;
+      const statutFg  = isValide ? GREEN_FG : ORANGE_FG;
+
+      // Bordure + bande gauche
+      doc.setDrawColor(...GREY_LIGHT);
+      doc.setLineWidth(0.3);
+      doc.rect(0.5, 0.5, TW - 1, TH - 1);
+      doc.setFillColor(...BLUE);
+      doc.rect(0, 0, 4, TH, 'F');
+
+      // En-tête
+      doc.setTextColor(...BLUE);
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(14);
+      doc.text('TRANSIA', M, 12);
+      const wTransia = doc.getTextWidth('TRANSIA');
+      doc.setTextColor(...GREY);
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(7);
+      doc.text('Billet de transport', M + wTransia + 4, 12);
+
+      // Badge n° billet
+      const badgeLabel = `${index + 1} / ${total}`;
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(7.5);
+      const badgeW = doc.getTextWidth(badgeLabel) + 6;
+      const badgeX = DIVIDER_X - 4 - badgeW;
+      doc.setFillColor(...BADGE_BG);
+      doc.roundedRect(badgeX, 6, badgeW, 6, 1.5, 1.5, 'F');
+      doc.setTextColor(...BLUE);
+      doc.text(badgeLabel, badgeX + badgeW / 2, 10.2, { align: 'center' });
+
+      // Séparateur pointillé
+      doc.setDrawColor(...GREY_LIGHT);
+      doc.setLineWidth(0.25);
+      doc.setLineDashPattern([1.2, 1], 0);
+      doc.line(M, 16, DIVIDER_X - 4, 16);
+      doc.setLineDashPattern([], 0);
+
+      // Trajet + statut
       doc.setTextColor(...DARK);
       doc.setFont('helvetica', 'bold');
-      doc.setFontSize(13);
-      doc.text(billet.nomPassager || '—', M + 11, yStart + 22);
+      doc.setFontSize(15);
+      doc.text(trajetLabel, M, 26);
 
-      // Ligne de séparation légère
-      doc.setDrawColor(226, 232, 240);
-      doc.setLineWidth(0.3);
-      doc.line(M + 11, yStart + 26, M + CW - 48, yStart + 26);
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(7.5);
+      const statutW = doc.getTextWidth(statutTxt) + 6;
+      const statutX = DIVIDER_X - 4 - statutW;
+      doc.setFillColor(...statutBg);
+      doc.roundedRect(statutX, 20, statutW, 6, 1.5, 1.5, 'F');
+      doc.setTextColor(...statutFg);
+      doc.text(statutTxt, statutX + statutW / 2, 24.2, { align: 'center' });
 
-      // ── Grille d'infos ──
-      const col1x = M + 11;
-      const col2x = M + 60;
-      const col3x = M + 115;
-      const gy    = yStart + 35;
+      // Date / heure
+      doc.setTextColor(...GREY);
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(9.5);
+      doc.text(dateHeure, M, 33);
 
-      const drawInfo = (label: string, value: string, x: number, y: number) => {
-        doc.setFont('helvetica', 'normal');
-        doc.setFontSize(7);
-        doc.setTextColor(...GREY);
-        doc.text(label, x, y);
-        doc.setFont('helvetica', 'bold');
-        doc.setFontSize(11);
-        doc.setTextColor(...DARK);
-        doc.text(value, x, y + 8);
-      };
+      // Grille d'infos compacte
+      const col2X = M + 90;
+      drawInfo('PASSAGER', billet?.nomPassager || r.nomResponsable || '—', M, 46);
+      drawInfo('SIÈGE', String(billet?.numeroSiege || '—'), col2X, 46);
+      drawInfo('RÉF. RÉSERVATION', shortRef, M, 63);
+      drawInfo('PRIX', `${(trajet?.tarif || 0).toLocaleString()} FCFA`, col2X, 63);
 
-      drawInfo('SIÈGE',       String(billet.numeroSiege || '—'),                          col1x, gy);
-      drawInfo('RESPONSABLE', r.nomResponsable || '—',                                    col2x, gy);
-      drawInfo('TARIF',       `${(trajet?.tarif || 0).toLocaleString()} FCFA`,            col1x, gy + 22);
-      drawInfo('PLACES RÉS.', String(r.nombrePlace),                                      col2x, gy + 22);
+      // Perforation verticale (séparation avec le coupon QR)
+      doc.setDrawColor(...GREY_LIGHT);
+      doc.setLineWidth(0.25);
+      doc.setLineDashPattern([1.2, 1], 0);
+      doc.line(DIVIDER_X, 6, DIVIDER_X, TH - 6);
+      doc.setLineDashPattern([], 0);
 
-      // ── QR code ──
-      const qrX = M + CW - 44;
-      const qrY = yStart + 14;
-      const qrS = 38;
+      // QR code
+      const qrColCenter = DIVIDER_X + (TW - DIVIDER_X) / 2;
+      const qrSize = 32;
+      const qrX = qrColCenter - qrSize / 2;
+      const qrY = 12;
 
       if (qrBase64) {
-        doc.addImage(qrBase64, 'PNG', qrX, qrY, qrS, qrS);
+        doc.addImage(qrBase64, 'PNG', qrX, qrY, qrSize, qrSize);
       } else {
         doc.setFillColor(...LIGHT);
-        doc.roundedRect(qrX, qrY, qrS, qrS, 2, 2, 'F');
+        doc.roundedRect(qrX, qrY, qrSize, qrSize, 2, 2, 'F');
         doc.setTextColor(...GREY);
-        doc.setFontSize(7);
-        doc.text('QR indisponible', qrX + qrS / 2, qrY + qrS / 2, { align: 'center' });
+        doc.setFontSize(6.5);
+        doc.text('QR indisponible', qrColCenter, qrY + qrSize / 2, { align: 'center', maxWidth: qrSize });
       }
 
       doc.setTextColor(...GREY);
       doc.setFont('helvetica', 'normal');
       doc.setFontSize(6);
-      doc.text('Scanner pour valider', qrX + qrS / 2, qrY + qrS + 4, { align: 'center' });
+      doc.text('Scannez pour valider', qrColCenter, qrY + qrSize + 5, { align: 'center' });
+    };
 
-      // Perforation pointillée en bas
-      const perfY = yStart + BH + 2;
-      doc.setDrawColor(203, 213, 225);
+    // ── Construction du PDF : une page par billet ──
+    if (billets.length === 0) {
+      doc.setDrawColor(...GREY_LIGHT);
       doc.setLineWidth(0.3);
-      let px = M;
-      while (px < M + CW) {
-        doc.line(px, perfY, Math.min(px + 3, M + CW), perfY);
-        px += 5;
-      }
-
-      return yStart + BH + 8;
-    };
-
-    // ── Pied de page ──
-    const drawPageFooter = (pageNum: number, total: number) => {
-      doc.setFillColor(...LIGHT);
-      doc.rect(0, PH - 14, PW, 14, 'F');
+      doc.rect(0.5, 0.5, TW - 1, TH - 1);
       doc.setFillColor(...BLUE);
-      doc.rect(0, PH - 14, PW, 0.5, 'F');
-
+      doc.rect(0, 0, 4, TH, 'F');
+      doc.setTextColor(...BLUE);
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(14);
+      doc.text('TRANSIA', M, 12);
       doc.setTextColor(...GREY);
-      doc.setFont('helvetica', 'normal');
-      doc.setFontSize(7);
-      doc.text('TRANSIA — Présentez ce document au chauffeur. Billet non remboursable après départ.', M, PH - 5);
-      doc.text(`Page ${pageNum} / ${total}`, PW - M, PH - 5, { align: 'right' });
-    };
-
-    // ── Construction du PDF ──
-    const BILLETS_PAR_PAGE = 2;
-    const totalPages = Math.ceil(billets.length / BILLETS_PAR_PAGE) || 1;
-
-    for (let page = 0; page < totalPages; page++) {
-      if (page > 0) doc.addPage();
-
-      drawPageHeader();
-      let y = drawTrajetBlock(40);
-
-      const slice = billets.slice(page * BILLETS_PAR_PAGE, (page + 1) * BILLETS_PAR_PAGE);
-
-      for (let k = 0; k < slice.length; k++) {
-        const globalIndex = page * BILLETS_PAR_PAGE + k;
-        y = drawBillet(slice[k], qrImages[globalIndex], globalIndex, y, billets.length);
-      }
-
-      // Si aucun billet (réservation sans billets encore)
-      if (billets.length === 0) {
-        doc.setTextColor(...GREY);
-        doc.setFont('helvetica', 'italic');
-        doc.setFontSize(11);
-        doc.text('Aucun billet généré — paiement en attente.', PW / 2, 160, { align: 'center' });
-      }
-
-      drawPageFooter(page + 1, totalPages);
+      doc.setFont('helvetica', 'italic');
+      doc.setFontSize(10);
+      doc.text('Aucun billet généré — paiement en attente.', TW / 2, TH / 2, { align: 'center' });
+    } else {
+      billets.forEach((billet, index) => {
+        if (index > 0) doc.addPage([TW, TH], 'landscape');
+        drawTicket(billet, qrImages[index], index, billets.length);
+      });
     }
 
     // ── Sauvegarde ──
@@ -732,7 +661,7 @@ export class Reservations implements OnInit {
       ?.map(b => b.nomPassager)
       .filter(name => name !== r.nomResponsable) || [];
     this.form = {
-      userId: null, trajetId: r.trajetId, nombrePlace: r.nombrePlace,
+      trajetId: r.trajetId, nombrePlace: r.nombrePlace,
       nomResponsable: r.nomResponsable || '', nomsPassagers: autres,
       billets: r.billets || [], typeReservation: r.typeReservation || TypeReservation.PRESENTIEL
     };
@@ -774,7 +703,7 @@ export class Reservations implements OnInit {
 
   private emptyForm(): ReservationFormInterface {
     return {
-      userId: null, trajetId: '', nombrePlace: 1, nomResponsable: '',
+      trajetId: '', nombrePlace: 1, nomResponsable: '',
       nomsPassagers: [], billets: [], typeReservation: TypeReservation.PRESENTIEL
     };
   }
@@ -802,7 +731,7 @@ export class Reservations implements OnInit {
 
     this.isSubmitting = true;
     const payload = {
-      userId: this.form.userId, trajetId: this.form.trajetId,
+      trajetId: this.form.trajetId,
       nombrePlace: this.form.nombrePlace,
       nomResponsable: this.form.nomResponsable.trim(),
       nomsPassagers, typeReservation: TypeReservation.PRESENTIEL,

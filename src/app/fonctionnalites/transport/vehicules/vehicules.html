@@ -11,10 +11,12 @@
           <p>Configurez et listez les véhicules de votre flotte de transport.</p>
         </div>
         
-        <button class="btn-blue-action-local" (click)="ouvrirCreation()">
-          <span class="material-icons">directions_car</span>
-          NOUVEAU VÉHICULE
-        </button>
+        @if (peutGerer) {
+          <button class="btn-blue-action-local" (click)="ouvrirCreation()">
+            <span class="material-icons">directions_car</span>
+            NOUVEAU VÉHICULE
+          </button>
+        }
       </div>
 
       <!-- Barre de Recherche -->
@@ -76,12 +78,17 @@
                 </td>
                 <td class="text-center actions-cell">
                   <div class="actions-wrapper">
-                    <button class="btn-table-action edit" (click)="ouvrirEdit(vehicule)" title="Modifier le véhicule">
-                      <span class="material-icons">edit</span>
+                    <button class="btn-table-action view" (click)="ouvrirDetail(vehicule)" title="Voir plus">
+                      <span class="material-icons">visibility</span>
                     </button>
-                    <button class="btn-table-action delete" (click)="supprimerVehicule(vehicule.id, vehicule.immatriculation)" title="Supprimer le véhicule">
-                      <span class="material-icons">delete</span>
-                    </button>
+                    @if (peutGerer) {
+                      <button class="btn-table-action edit" (click)="ouvrirEdit(vehicule)" title="Modifier le véhicule">
+                        <span class="material-icons">edit</span>
+                      </button>
+                      <button class="btn-table-action delete" (click)="supprimerVehicule(vehicule.id, vehicule.immatriculation)" title="Supprimer le véhicule">
+                        <span class="material-icons">delete</span>
+                      </button>
+                    }
                   </div>
                 </td>
               </tr>
@@ -153,6 +160,14 @@
         <input type="number" [(ngModel)]="nouveauVehicule.capacite" placeholder="Ex: 50">
       </div>
       <div class="form-group">
+        <label>Capacité soute (kg)</label>
+        <input type="number" [(ngModel)]="nouveauVehicule.capaciteSoute" placeholder="Ex: 500">
+      </div>
+      <div class="form-group">
+        <label>Kilométrage</label>
+        <input type="number" [(ngModel)]="nouveauVehicule.kilometrage" placeholder="Ex: 12000">
+      </div>
+      <div class="form-group">
         <label>Statut</label>
         <select [(ngModel)]="nouveauVehicule.statut" class="form-select">
           <option [value]="StatutVehicule.DISPONIBLE">Disponible</option>
@@ -160,6 +175,28 @@
           <option [value]="StatutVehicule.EN_MAINTENANCE">En Maintenance</option>
           <option [value]="StatutVehicule.HORS_SERVICE">Hors Service</option>
         </select>
+      </div>
+      <div class="form-group">
+        <label>Ville de base</label>
+        <select [(ngModel)]="nouveauVehicule.villeBaseId" (ngModelChange)="onVilleBaseChange(nouveauVehicule)" class="form-select">
+          <option value="">— Non définie —</option>
+          <option *ngFor="let v of villes" [value]="v.id">{{ v.nomVille }}</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Ville actuelle</label>
+        <select [(ngModel)]="nouveauVehicule.villeActuelleId" class="form-select">
+          <option value="">— Non définie —</option>
+          <option *ngFor="let v of villes" [value]="v.id">{{ v.nomVille }}</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Agence</label>
+        <select [(ngModel)]="nouveauVehicule.agenceId" class="form-select">
+          <option value="">— Sélectionner une agence —</option>
+          <option *ngFor="let a of agencesFiltrees" [value]="a.id">{{ a.nom }}</option>
+        </select>
+        <span class="field-hint" *ngIf="!nouveauVehicule.villeBaseId">Sélectionnez d'abord une ville de base pour filtrer les agences</span>
       </div>
       <div class="form-group">
         <label>Image du véhicule</label>
@@ -203,12 +240,41 @@
         <input type="number" [(ngModel)]="vehiculeEditer.capacite">
       </div>
       <div class="form-group">
+        <label>Capacité soute (kg)</label>
+        <input type="number" [(ngModel)]="vehiculeEditer.capaciteSoute">
+      </div>
+      <div class="form-group">
+        <label>Kilométrage</label>
+        <input type="number" [(ngModel)]="vehiculeEditer.kilometrage">
+      </div>
+      <div class="form-group">
         <label>Statut</label>
         <select [(ngModel)]="vehiculeEditer.statut" class="form-select">
           <option [value]="StatutVehicule.DISPONIBLE">Disponible</option>
           <option [value]="StatutVehicule.EN_ROUTE">En Route</option>
           <option [value]="StatutVehicule.EN_MAINTENANCE">En Maintenance</option>
           <option [value]="StatutVehicule.HORS_SERVICE">Hors service</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Ville de base</label>
+        <select [(ngModel)]="vehiculeEditer.villeBaseId" (ngModelChange)="onVilleBaseChange(vehiculeEditer)" class="form-select">
+          <option value="">— Non définie —</option>
+          <option *ngFor="let v of villes" [value]="v.id">{{ v.nomVille }}</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Ville actuelle</label>
+        <select [(ngModel)]="vehiculeEditer.villeActuelleId" class="form-select">
+          <option value="">— Non définie —</option>
+          <option *ngFor="let v of villes" [value]="v.id">{{ v.nomVille }}</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Agence</label>
+        <select [(ngModel)]="vehiculeEditer.agenceId" class="form-select">
+          <option value="">— Sélectionner une agence —</option>
+          <option *ngFor="let a of agencesFiltrees" [value]="a.id">{{ a.nom }}</option>
         </select>
       </div>
       <div class="form-group">
@@ -222,6 +288,74 @@
     <div class="modal-footer">
       <button class="btn-secondary" (click)="afficherEditVehicule = false; vehiculeEditer = null">Annuler</button>
       <button class="btn-primary" (click)="soumettreModification()">Enregistrer les modifications</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modale de détail (voir plus) -->
+<div class="custom-modal-backdrop" *ngIf="afficherDetailVehicule && vehiculeVoir">
+  <div class="custom-modal-box">
+    <div class="modal-header">
+      <h2>Détail du véhicule</h2>
+      <button class="close-icon-btn" (click)="fermerDetail()">
+        <span class="material-icons">close</span>
+      </button>
+    </div>
+    <div class="modal-body">
+      <div class="detail-avatar-section">
+        @if (vehiculeVoir.image) {
+          <img [src]="vehiculeVoir.image" class="vehicule-image-detail" alt="{{ vehiculeVoir.marque }} {{ vehiculeVoir.modele }}" />
+        } @else {
+          <div class="vehicule-image-placeholder">
+            <span class="material-icons">directions_car</span>
+          </div>
+        }
+        <div>
+          <div class="vehicule-title">{{ vehiculeVoir.marque }} {{ vehiculeVoir.modele }}</div>
+          <span class="statut-badge" [ngClass]="getStatutClass(vehiculeVoir.statut)">
+            {{ getStatutLibelle(vehiculeVoir.statut) }}
+          </span>
+        </div>
+      </div>
+      <div class="detail-grid">
+        <div class="detail-item">
+          <span class="detail-label">Immatriculation</span>
+          <span class="detail-value">{{ vehiculeVoir.immatriculation }}</span>
+        </div>
+        <div class="detail-item">
+          <span class="detail-label">Capacité</span>
+          <span class="detail-value">{{ vehiculeVoir.capacite }} places</span>
+        </div>
+        <div class="detail-item">
+          <span class="detail-label">Capacité soute</span>
+          <span class="detail-value">{{ vehiculeVoir.capaciteSoute || 0 }} kg</span>
+        </div>
+        <div class="detail-item">
+          <span class="detail-label">Kilométrage</span>
+          <span class="detail-value">{{ vehiculeVoir.kilometrage || 0 }} km</span>
+        </div>
+        <div class="detail-item">
+          <span class="detail-label">Ville de base</span>
+          <span class="detail-value">{{ vehiculeVoir.villeBaseNom || '—' }}</span>
+        </div>
+        <div class="detail-item">
+          <span class="detail-label">Ville actuelle</span>
+          <span class="detail-value">{{ vehiculeVoir.villeActuelleNom || '—' }}</span>
+        </div>
+        <div class="detail-item">
+          <span class="detail-label">Agence</span>
+          <span class="detail-value">{{ vehiculeVoir.agenceNom || '—' }}</span>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-secondary" (click)="fermerDetail()">Fermer</button>
+      @if (peutGerer) {
+        <button class="btn-primary" (click)="fermerDetail(); ouvrirEdit(vehiculeVoir)">
+          <span class="material-icons">edit</span>
+          Modifier
+        </button>
+      }
     </div>
   </div>
 </div>

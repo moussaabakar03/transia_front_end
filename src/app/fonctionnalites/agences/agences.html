@@ -3,112 +3,368 @@
 
   <div class="main-content-area">
     <app-header (actionCreer)="ouvrirCreation()"></app-header>
-    
+
     <div class="page-body">
+      <div class="dashboard-action-bar">
+        <div class="welcome-text">
+          <h1>Gestion des Agences</h1>
+          <p>Configurez et listez les points de service physiques du réseau.</p>
+        </div>
 
-      <div class="page-container">
+        @if (isSuperAdmin) {
+          <button class="btn-blue-action-local" (click)="ouvrirCreation()">
+            <span class="material-icons">store</span>
+            NOUVELLE AGENCE
+          </button>
+        }
+      </div>
 
-        <div class="page-header">
-          <h2>Gestion des Agences</h2>
-          <button class="btn-primary" (click)="openCreate()">
-            <i class="material-icons">add</i> Nouvelle agence
+      <!-- Barre de Recherche -->
+      <div class="search-bar">
+        <span class="material-icons">search</span>
+        <input
+          type="text"
+          placeholder="Rechercher par nom, ville ou téléphone..."
+          [(ngModel)]="valeurSaisi"
+          (input)="filtrerAgences()"
+        />
+      </div>
+
+      <!-- Tableau des Agences -->
+      <div class="table-container-agences">
+        <table class="custom-agences-table">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>PHOTO</th>
+              <th>NOM</th>
+              <th>VILLE</th>
+              <th>TÉLÉPHONE</th>
+              <th>GPS</th>
+              <th>STATUT</th>
+              <th class="text-center">ACTIONS</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (a of agencesAffichees; track a.id) {
+              <tr>
+                <td>
+                  <span class="agence-id-tag">#AG-{{ a.id?.substring(0,5) || 'N/A' }}</span>
+                </td>
+                <td>
+                  @if (a.photos && a.photos.length > 0) {
+                    <img [src]="a.photos[0]" class="agence-image" alt="{{ a.nom }}" />
+                  } @else {
+                    <div class="agence-image-placeholder">
+                      <span class="material-icons">store</span>
+                    </div>
+                  }
+                </td>
+                <td>
+                  <div class="agence-name-cell">
+                    <span class="material-icons agence-icon">store</span>
+                    <span class="agence-title">{{ a.nom }}</span>
+                  </div>
+                </td>
+                <td>{{ a.villeNom || '—' }}</td>
+                <td>{{ a.telephone || '—' }}</td>
+                <td>
+                  @if (a.latitude && a.longitude) {
+                    <span class="gps-badge">{{ a.latitude | number:'1.4-4' }}, {{ a.longitude | number:'1.4-4' }}</span>
+                  } @else {
+                    <span class="text-muted">—</span>
+                  }
+                </td>
+                <td>
+                  <span class="statut-badge" [class.statut-active]="a.statut" [class.statut-inactive]="!a.statut">
+                    {{ a.statut ? 'Active' : 'Inactive' }}
+                  </span>
+                </td>
+                <td class="text-center actions-cell">
+                  <div class="actions-wrapper">
+                    <button class="btn-table-action view" (click)="ouvrirDetail(a)" title="Voir détails">
+                      <span class="material-icons">visibility</span>
+                    </button>
+                    @if (peutModifier(a)) {
+                      <button class="btn-table-action edit" (click)="ouvrirEdit(a)" title="Modifier l'agence">
+                        <span class="material-icons">edit</span>
+                      </button>
+                    }
+                    @if (isSuperAdmin) {
+                      <button class="btn-table-action statut" (click)="toggleStatut(a)" [title]="a.statut ? 'Désactiver' : 'Activer'">
+                        <span class="material-icons">{{ a.statut ? 'toggle_on' : 'toggle_off' }}</span>
+                      </button>
+                      <button class="btn-table-action delete" (click)="supprimerAgence(a.id, a.nom)" title="Supprimer l'agence">
+                        <span class="material-icons">delete</span>
+                      </button>
+                    }
+                  </div>
+                </td>
+              </tr>
+            } @empty {
+              <tr>
+                <td colspan="8" class="text-center py-8">
+                  <div class="empty-state">
+                    <span class="material-icons font-size-xl">store</span>
+                    <p>Aucune agence ne correspond à votre recherche.</p>
+                  </div>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Pagination -->
+      <div class="pagination-container">
+        <span class="pagination-info">
+          Affichage de {{ agencesAffichees.length }} sur {{ totalAgences }} agence(s)
+        </span>
+        <div class="pagination-buttons">
+          <button class="btn-pag" [disabled]="pageActuelle === 1" (click)="pagePrecedente()">
+            <span class="material-icons">chevron_left</span>
+          </button>
+          @for (p of [].constructor(totalPages); track $index) {
+            <button
+              class="btn-pag"
+              [class.active]="pageActuelle === $index + 1"
+              (click)="changerPage($index + 1)">
+              {{ $index + 1 }}
+            </button>
+          }
+          <button class="btn-pag" [disabled]="pageActuelle === totalPages" (click)="pageSuivante()">
+            <span class="material-icons">chevron_right</span>
           </button>
         </div>
-
-        <!-- Formulaire création / édition -->
-        <div class="form-card" *ngIf="showForm">
-          <h3>{{ editMode ? 'Modifier l\'agence' : 'Créer une agence' }}</h3>
-          <form (ngSubmit)="save()">
-
-            <div class="form-grid">
-              <div class="form-group">
-                <label>Nom de l'agence *</label>
-                <input type="text" [(ngModel)]="form.nom" name="nom" required placeholder="Ex: Agence Transia Lomé" />
-              </div>
-
-              <div class="form-group">
-                <label>Ville *</label>
-                <select [(ngModel)]="form.villeId" name="villeId" required>
-                  <option value="">-- Choisir une ville --</option>
-                  <option *ngFor="let v of villes" [value]="v.id">{{ v.nomVille }}</option>
-                </select>
-              </div>
-
-              <div class="form-group">
-                <label>Adresse</label>
-                <input type="text" [(ngModel)]="form.adresse" name="adresse" placeholder="Ex: Rue du Commerce, Quartier Administratif" />
-              </div>
-
-              <div class="form-group">
-                <label>Téléphone</label>
-                <input type="text" [(ngModel)]="form.telephone" name="telephone" placeholder="+228 XX XX XX XX" />
-              </div>
-
-              <div class="form-group">
-                <label>Email</label>
-                <input type="email" [(ngModel)]="form.email" name="email" placeholder="agence@transia.com" />
-              </div>
-
-              <div class="form-group">
-                <label>Latitude</label>
-                <input type="number" [(ngModel)]="form.latitude" name="latitude" step="0.000001" placeholder="Ex: 6.1375" />
-              </div>
-
-              <div class="form-group">
-                <label>Longitude</label>
-                <input type="number" [(ngModel)]="form.longitude" name="longitude" step="0.000001" placeholder="Ex: 1.2123" />
-              </div>
-            </div>
-
-            <div class="form-actions">
-              <button type="submit" class="btn-primary">{{ editMode ? 'Enregistrer' : 'Créer' }}</button>
-              <button type="button" class="btn-secondary" (click)="cancel()">Annuler</button>
-            </div>
-          </form>
-        </div>
-
-        <!-- Liste des agences -->
-        <div class="table-card">
-          <table>
-            <thead>
-              <tr>
-                <th>Nom</th>
-                <th>Ville</th>
-                <th>Adresse</th>
-                <th>Téléphone</th>
-                <th>GPS</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr *ngFor="let a of agences">
-                <td>{{ a.nom }}</td>
-                <td>{{ a.villeNom }}</td>
-                <td>{{ a.adresse || '-' }}</td>
-                <td>{{ a.telephone || '-' }}</td>
-                <td>
-                  <span *ngIf="a.latitude && a.longitude" class="gps-badge">
-                    {{ a.latitude | number:'1.4-4' }}, {{ a.longitude | number:'1.4-4' }}
-                  </span>
-                  <span *ngIf="!a.latitude || !a.longitude" class="text-muted">—</span>
-                </td>
-                <td class="actions">
-                  <button class="btn-icon edit" (click)="openEdit(a)" title="Modifier">
-                    <i class="material-icons">edit</i>
-                  </button>
-                  <button class="btn-icon delete" (click)="delete(a.id!)" title="Supprimer">
-                    <i class="material-icons">delete</i>
-                  </button>
-                </td>
-              </tr>
-              <tr *ngIf="agences.length === 0">
-                <td colspan="6" class="empty-row">Aucune agence enregistrée.</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-
       </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modale de création d'agence -->
+<div class="custom-modal-backdrop" *ngIf="afficherCreationAgence">
+  <div class="custom-modal-box">
+    <div class="modal-header">
+      <h2>Ajouter une nouvelle agence</h2>
+      <button class="close-icon-btn" (click)="afficherCreationAgence = false">
+        <span class="material-icons">close</span>
+      </button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label>Nom de l'agence *</label>
+        <input type="text" [(ngModel)]="form.nom" placeholder="Ex: Agence Transia Lomé">
+      </div>
+      <div class="form-group">
+        <label>Ville *</label>
+        <select [(ngModel)]="form.villeId" class="form-select">
+          <option value="">-- Choisir une ville --</option>
+          <option *ngFor="let v of villes" [value]="v.id">{{ v.nomVille }}</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Adresse *</label>
+        <input type="text" [(ngModel)]="form.adresse" placeholder="Ex: Rue du Commerce, Quartier Administratif">
+      </div>
+      <div class="form-group">
+        <label>Téléphone *</label>
+        <input type="text" [(ngModel)]="form.telephone" placeholder="+228 XX XX XX XX">
+      </div>
+      <div class="form-group">
+        <label>Email</label>
+        <input type="email" [(ngModel)]="form.email" placeholder="agence@transia.com">
+      </div>
+      <div class="form-group gps-group">
+        <label>Localisation GPS *</label>
+        <div class="gps-assist-row">
+          <input type="text" [(ngModel)]="lienMapsColle" placeholder="Collez un lien Google Maps ici...">
+          <button type="button" class="btn-gps-assist" (click)="appliquerLienMaps()" title="Extraire les coordonnées du lien">
+            <span class="material-icons">link</span>
+          </button>
+          <button type="button" class="btn-gps-assist" (click)="utiliserPositionActuelle()" [disabled]="recherchePositionEnCours" title="Utiliser ma position actuelle">
+            <span class="material-icons">{{ recherchePositionEnCours ? 'hourglass_top' : 'my_location' }}</span>
+          </button>
+        </div>
+        <span class="field-hint">Sur Google Maps : appuyez sur le lieu puis « Partager » → « Copier le lien », et collez-le ci-dessus. Ou utilisez le bouton de géolocalisation si vous êtes sur place.</span>
+        <div class="gps-manual-row">
+          <input type="number" [(ngModel)]="form.latitude" step="0.000001" placeholder="Latitude (ex: 6.1375)">
+          <input type="number" [(ngModel)]="form.longitude" step="0.000001" placeholder="Longitude (ex: 1.2123)">
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Galerie photos</label>
+        <input type="file" class="file-input" accept="image/*" multiple (change)="onPhotosSelected($event)">
+        <div class="photos-gallery" *ngIf="(form.photos?.length || 0) > 0">
+          <div class="photo-thumb" *ngFor="let photo of form.photos; let i = index">
+            <img [src]="photo" alt="Photo agence">
+            <button type="button" class="photo-remove" (click)="supprimerPhoto(i)" title="Retirer">
+              <span class="material-icons">close</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-secondary" (click)="afficherCreationAgence = false">Annuler</button>
+      <button class="btn-primary" (click)="soumettreCreation()">Enregistrer</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modale de modification d'agence -->
+<div class="custom-modal-backdrop" *ngIf="afficherEditAgence && agenceEditer">
+  <div class="custom-modal-box">
+    <div class="modal-header">
+      <h2>Modifier l'agence</h2>
+      <button class="close-icon-btn" (click)="afficherEditAgence = false; agenceEditer = undefined">
+        <span class="material-icons">close</span>
+      </button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label>Nom de l'agence *</label>
+        <input type="text" [(ngModel)]="form.nom">
+      </div>
+      <div class="form-group">
+        <label>Ville *</label>
+        <select [(ngModel)]="form.villeId" class="form-select">
+          <option value="">-- Choisir une ville --</option>
+          <option *ngFor="let v of villes" [value]="v.id">{{ v.nomVille }}</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Adresse *</label>
+        <input type="text" [(ngModel)]="form.adresse">
+      </div>
+      <div class="form-group">
+        <label>Téléphone *</label>
+        <input type="text" [(ngModel)]="form.telephone">
+      </div>
+      <div class="form-group">
+        <label>Email</label>
+        <input type="email" [(ngModel)]="form.email">
+      </div>
+      <div class="form-group gps-group">
+        <label>Localisation GPS *</label>
+        <div class="gps-assist-row">
+          <input type="text" [(ngModel)]="lienMapsColle" placeholder="Collez un lien Google Maps ici...">
+          <button type="button" class="btn-gps-assist" (click)="appliquerLienMaps()" title="Extraire les coordonnées du lien">
+            <span class="material-icons">link</span>
+          </button>
+          <button type="button" class="btn-gps-assist" (click)="utiliserPositionActuelle()" [disabled]="recherchePositionEnCours" title="Utiliser ma position actuelle">
+            <span class="material-icons">{{ recherchePositionEnCours ? 'hourglass_top' : 'my_location' }}</span>
+          </button>
+        </div>
+        <span class="field-hint">Sur Google Maps : appuyez sur le lieu puis « Partager » → « Copier le lien », et collez-le ci-dessus. Ou utilisez le bouton de géolocalisation si vous êtes sur place.</span>
+        <div class="gps-manual-row">
+          <input type="number" [(ngModel)]="form.latitude" step="0.000001" placeholder="Latitude">
+          <input type="number" [(ngModel)]="form.longitude" step="0.000001" placeholder="Longitude">
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Galerie photos</label>
+        <input type="file" class="file-input" accept="image/*" multiple (change)="onPhotosSelected($event)">
+        <div class="photos-gallery" *ngIf="(form.photos?.length || 0) > 0">
+          <div class="photo-thumb" *ngFor="let photo of form.photos; let i = index">
+            <img [src]="photo" alt="Photo agence">
+            <button type="button" class="photo-remove" (click)="supprimerPhoto(i)" title="Retirer">
+              <span class="material-icons">close</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-secondary" (click)="afficherEditAgence = false; agenceEditer = undefined">Annuler</button>
+      <button class="btn-primary" (click)="soumettreModification()">Enregistrer les modifications</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modale de détail (voir plus) -->
+<div class="custom-modal-backdrop" *ngIf="afficherDetailAgence && agenceVoir">
+  <div class="custom-modal-box">
+    <div class="modal-header">
+      <h2>Détail de l'agence</h2>
+      <button class="close-icon-btn" (click)="fermerDetail()">
+        <span class="material-icons">close</span>
+      </button>
+    </div>
+    <div class="modal-body">
+      @if (agenceVoir.photos && agenceVoir.photos.length > 0) {
+        <div class="photo-carousel">
+          <img [src]="agenceVoir.photos[photoActiveIndex]" class="carousel-image" alt="{{ agenceVoir.nom }}" />
+          @if (agenceVoir.photos.length > 1) {
+            <button type="button" class="carousel-arrow prev" (click)="photoPrecedente()" title="Photo précédente">
+              <span class="material-icons">chevron_left</span>
+            </button>
+            <button type="button" class="carousel-arrow next" (click)="photoSuivante()" title="Photo suivante">
+              <span class="material-icons">chevron_right</span>
+            </button>
+            <div class="carousel-dots">
+              <span *ngFor="let photo of agenceVoir.photos; let i = index"
+                    class="carousel-dot" [class.active]="i === photoActiveIndex"
+                    (click)="allerAPhoto(i)"></span>
+            </div>
+          }
+        </div>
+      } @else {
+        <div class="agence-image-placeholder detail-placeholder">
+          <span class="material-icons">store</span>
+        </div>
+      }
+
+      <div class="detail-header-row">
+        <div class="agence-title">{{ agenceVoir.nom }}</div>
+        <span class="statut-badge" [class.statut-active]="agenceVoir.statut" [class.statut-inactive]="!agenceVoir.statut">
+          {{ agenceVoir.statut ? 'Active' : 'Inactive' }}
+        </span>
+      </div>
+
+      <div class="detail-grid">
+        <div class="detail-item">
+          <span class="detail-label">Ville</span>
+          <span class="detail-value">{{ agenceVoir.villeNom || '—' }}</span>
+        </div>
+        <div class="detail-item">
+          <span class="detail-label">Téléphone</span>
+          <span class="detail-value">{{ agenceVoir.telephone || '—' }}</span>
+        </div>
+        <div class="detail-item">
+          <span class="detail-label">Email</span>
+          <span class="detail-value">{{ agenceVoir.email || '—' }}</span>
+        </div>
+        <div class="detail-item">
+          <span class="detail-label">Coordonnées GPS</span>
+          <span class="detail-value">
+            @if (agenceVoir.latitude && agenceVoir.longitude) {
+              {{ agenceVoir.latitude | number:'1.4-4' }}, {{ agenceVoir.longitude | number:'1.4-4' }}
+            } @else {
+              —
+            }
+          </span>
+        </div>
+        <div class="detail-item detail-item-full">
+          <span class="detail-label">Adresse</span>
+          <span class="detail-value">{{ agenceVoir.adresse || '—' }}</span>
+        </div>
+      </div>
+
+      @if (lienGoogleMaps(agenceVoir); as lienMaps) {
+        <a [href]="lienMaps" target="_blank" rel="noopener" class="btn-maps-link">
+          <span class="material-icons">map</span>
+          Voir sur Google Maps
+        </a>
+      }
+    </div>
+    <div class="modal-footer">
+      <button class="btn-secondary" (click)="fermerDetail()">Fermer</button>
+      @if (peutModifier(agenceVoir)) {
+        <button class="btn-primary" (click)="fermerDetail(); ouvrirEdit(agenceVoir)">
+          <span class="material-icons">edit</span>
+          Modifier
+        </button>
+      }
     </div>
   </div>
 </div>

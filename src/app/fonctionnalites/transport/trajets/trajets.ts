@@ -11,6 +11,8 @@ import { UserService } from '../../../core/services/user-service';
 import { CurrentUserService } from '../../../core/services/current-user.service';
 import { Ville } from '../../../shared/models/ville';
 import { Vehicule } from '../../../shared/models/vehicule';
+import { Reservation, StatutReservation } from '../../../shared/models/reservation.model';
+import { ReservationService } from '../../../core/services/reservation-service';
 
 @Component({
   selector: 'app-trajets',
@@ -26,9 +28,24 @@ export class Trajets implements OnInit {
   // États des modales
   afficherCreationTrajet: boolean = false;
   afficherEditTrajet: boolean = false;
+  afficherDetailTrajet: boolean = false;
 
   // Données éditées / en cours
   trajetEditer: Trajet | null = null;
+  trajetVoir: Trajet | null = null;
+
+  // Réservations liées au trajet consulté (modale détail) + statistiques dérivées
+  reservationsDuTrajet: Reservation[] = [];
+  chargementReservationsTrajet = false;
+  statsTrajet: {
+    placesReservees: number;
+    placesDisponibles: number;
+    capacite: number;
+    tauxRemplissage: number;
+    montantEncaisse: number;
+    nombreReservations: number;
+  } | null = null;
+  readonly StatutReservation = StatutReservation;
   nouveauTrajet: any = {
     villeDepartId: '',
     villeArriveeId: '',
@@ -65,26 +82,33 @@ export class Trajets implements OnInit {
   // Contexte agent connecté
   agentVilleId:  string | null = null;
   agentVilleNom: string | null = null;
+  agentAgenceId: string | null = null;
   isAdmin = false;
 
+  // Droits d'écriture (SUPER_ADMIN/ADMIN_AGENCE, cf. TrajetController côté backend)
+  peutGerer: boolean = false;
+
   constructor(
-    private trajetService:   TrajetService,
-    private villeService:    VilleService,
-    private vehiculeService: VehiculeService,
-    private userService:     UserService,
-    private currentUser:     CurrentUserService
+    private trajetService:       TrajetService,
+    private villeService:        VilleService,
+    private vehiculeService:     VehiculeService,
+    private userService:         UserService,
+    private currentUser:         CurrentUserService,
+    private reservationService:  ReservationService
   ) {}
 
   ngOnInit(): void {
     const ctx        = this.currentUser.getContext();
     this.agentVilleId  = ctx?.villeId  ?? null;
     this.agentVilleNom = ctx?.villeNom ?? null;
+    this.agentAgenceId = ctx?.agenceId ?? null;
     this.isAdmin       = this.currentUser.isGlobalView();
+    this.peutGerer     = this.currentUser.peutGererTransport();
 
     this.loadTrajets();
     this.loadVilles();
     this.loadVehicules();
-    this.loadChauffeurs();
+    this.loadChauffeurs(this.agentVilleId ?? undefined);
   }
 
   // Charger les listes pour les select dropdowns
@@ -106,8 +130,8 @@ export class Trajets implements OnInit {
     });
   }
 
-  loadChauffeurs(): void {
-    this.userService.getChauffeurs().subscribe({
+  loadChauffeurs(villeId?: string): void {
+    this.userService.getChauffeurs(villeId).subscribe({
       next: (data: any[]) => {
         this.chauffeurs = data;
       },
@@ -115,12 +139,26 @@ export class Trajets implements OnInit {
     });
   }
 
-  // Chargement initial depuis l'API
+  // Le chauffeur doit être disponible dans la ville de départ choisie : on recharge la liste
+  // et on réinitialise la sélection si elle ne correspond plus (le backend valide de toute façon à la soumission).
+  onVilleDepartChange(villeId: string, cible: { chauffeurId?: string | null }): void {
+    cible.chauffeurId = null;
+    this.loadChauffeurs(villeId || undefined);
+  }
+
+  // Chargement initial depuis l'API.
+  // GET /trajet n'est volontairement pas filtré par agence côté backend (le client mobile doit
+  // parcourir tous les trajets, toutes agences, pour réserver). Sur ce panneau admin en revanche,
+  // un ADMIN_AGENCE ne doit voir que les trajets de sa propre agence (cohérent avec Vehicules) :
+  // filtrage appliqué ici, côté client.
   loadTrajets(): void {
     this.trajetService.getAll().subscribe({
       next: (data) => {
-        this.tousLesTrajets = data;
-        this.resultatsFiltres = [...data];
+        const visibles = this.isAdmin
+          ? data
+          : data.filter(t => this.agentAgenceId != null && t.agenceId === this.agentAgenceId);
+        this.tousLesTrajets = visibles;
+        this.resultatsFiltres = [...visibles];
         this.totalTrajets = this.resultatsFiltres.length;
         this.pageActuelle = 1;
         this.appliquerPage();
@@ -178,15 +216,15 @@ export class Trajets implements OnInit {
   supprimerTrajet(id: string | undefined, description: string): void {
     if (!id) return;
     
-    if (confirm(`Voulez-vous vraiment supprimer le trajet ${description} ?`)) {
+    if (confirm(`Voulez-vous annuler le trajet ${description} ? Le véhicule sera libéré.`)) {
       this.trajetService.delete(id).subscribe({
         next: () => {
-          alert(`Le trajet a été supprimé.`);
+          alert(`Le trajet a été annulé.`);
           this.loadTrajets();
         },
         error: (err) => {
-          console.error('Erreur lors de la suppression', err);
-          alert('Impossible de supprimer ce trajet.');
+          console.error('Erreur lors de l\'annulation', err);
+          alert('Impossible d\'annuler ce trajet.');
         }
       });
     }
@@ -265,6 +303,70 @@ export class Trajets implements OnInit {
       },
       error: (err) => console.error('Erreur lors de la modification', err)
     });
+  }
+
+  // Voir le détail d'un trajet, avec ses réservations liées et quelques statistiques dérivées
+  ouvrirDetail(trajet: Trajet): void {
+    this.trajetVoir = trajet;
+    this.afficherDetailTrajet = true;
+    this.reservationsDuTrajet = [];
+    this.statsTrajet = null;
+
+    if (!trajet.id) return;
+
+    this.chargementReservationsTrajet = true;
+    this.reservationService.getByTrajet(trajet.id).subscribe({
+      next: (reservations) => {
+        this.reservationsDuTrajet = reservations;
+        this.statsTrajet = this.calculerStatsTrajet(trajet, reservations);
+        this.chargementReservationsTrajet = false;
+      },
+      error: (err) => {
+        console.error('Erreur de chargement des réservations du trajet', err);
+        this.chargementReservationsTrajet = false;
+      }
+    });
+  }
+
+  // Places "occupantes" = réservations non annulées/expirées (même règle que le backend pour la
+  // vérification de capacité) ; montant encaissé = paiements des réservations effectivement confirmées.
+  private calculerStatsTrajet(trajet: Trajet, reservations: Reservation[]) {
+    const occupantes = reservations.filter(r =>
+      r.statut === StatutReservation.EN_ATTENTE || r.statut === StatutReservation.CONFIRMEE
+    );
+    const placesReservees = occupantes.reduce((total, r) => total + (r.nombrePlace || 0), 0);
+    const capacite = trajet.vehicule?.capacite || 0;
+    const placesDisponibles = Math.max(0, capacite - placesReservees);
+    const tauxRemplissage = capacite > 0 ? Math.round((placesReservees / capacite) * 100) : 0;
+    const montantEncaisse = reservations
+      .filter(r => r.statut === StatutReservation.CONFIRMEE)
+      .reduce((total, r) => total + (r.paiement?.montantVerse || 0), 0);
+
+    return {
+      placesReservees,
+      placesDisponibles,
+      capacite,
+      tauxRemplissage,
+      montantEncaisse,
+      nombreReservations: reservations.length
+    };
+  }
+
+  getStatutReservationLibelle(statut: StatutReservation): string {
+    switch (statut) {
+      case StatutReservation.EN_ATTENTE: return 'En attente';
+      case StatutReservation.CONFIRMEE:  return 'Confirmée';
+      case StatutReservation.ANNULEE:    return 'Annulée';
+      case StatutReservation.EXPIREE:    return 'Expirée';
+      default: return 'Inconnu';
+    }
+  }
+
+  fermerDetail(): void {
+    this.afficherDetailTrajet = false;
+    this.trajetVoir = null;
+    this.reservationsDuTrajet = [];
+    this.statsTrajet = null;
   }
 
   getStatutLibelle(statut: StatutTrajet): string {

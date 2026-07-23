@@ -8,6 +8,8 @@ export interface Agence {
   email?: string;
   latitude?: number;
   longitude?: number;
+  statut?: boolean;
+  photos?: string[];
 }
 
 export interface AgencePayload {
@@ -18,4 +20,5 @@ export interface AgencePayload {
   email?: string;
   latitude?: number;
   longitude?: number;
+  photos?: string[];
 }

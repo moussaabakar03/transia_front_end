@@ -11,10 +11,12 @@
           <p>Configurez et listez les trajets de transport entre les villes.</p>
         </div>
         
-        <button class="btn-blue-action-local" (click)="ouvrirCreation()">
-          <span class="material-icons">route</span>
-          NOUVEAU TRAJET
-        </button>
+        @if (peutGerer) {
+          <button class="btn-blue-action-local" (click)="ouvrirCreation()">
+            <span class="material-icons">route</span>
+            NOUVEAU TRAJET
+          </button>
+        }
       </div>
 
       <!-- Barre de Recherche -->
@@ -75,12 +77,17 @@
                 </td>
                 <td class="text-center actions-cell">
                   <div class="actions-wrapper">
-                    <button class="btn-table-action edit" (click)="ouvrirEdit(trajet)" title="Modifier le trajet">
-                      <span class="material-icons">edit</span>
+                    <button class="btn-table-action view" (click)="ouvrirDetail(trajet)" title="Voir détails">
+                      <span class="material-icons">visibility</span>
                     </button>
-                    <button class="btn-table-action delete" (click)="supprimerTrajet(trajet.id, trajet.villeDepart.nomVille + ' → ' + trajet.villeArrivee.nomVille)" title="Supprimer le trajet">
-                      <span class="material-icons">delete</span>
-                    </button>
+                    @if (peutGerer) {
+                      <button class="btn-table-action edit" (click)="ouvrirEdit(trajet)" title="Modifier le trajet">
+                        <span class="material-icons">edit</span>
+                      </button>
+                      <button class="btn-table-action delete" (click)="supprimerTrajet(trajet.id, trajet.villeDepart.nomVille + ' → ' + trajet.villeArrivee.nomVille)" title="Supprimer le trajet">
+                        <span class="material-icons">delete</span>
+                      </button>
+                    }
                   </div>
                 </td>
               </tr>
@@ -144,7 +151,7 @@
             <span class="ville-fixe-badge">Votre agence</span>
           </div>
         } @else {
-          <select [(ngModel)]="nouveauTrajet.villeDepartId" class="form-select">
+          <select [(ngModel)]="nouveauTrajet.villeDepartId" (ngModelChange)="onVilleDepartChange(nouveauTrajet.villeDepartId, nouveauTrajet)" class="form-select">
             <option value="">Sélectionner une ville</option>
             @for (ville of villes; track ville.id) {
               <option [value]="ville.id">{{ ville.nomVille }} ({{ ville.region }})</option>
@@ -176,10 +183,11 @@
         <label>Chauffeur</label>
         <select [(ngModel)]="nouveauTrajet.chauffeurId" class="form-select">
           <option value="">Sélectionner un chauffeur</option>
-          @for (chauffeur of chauffeurs; track chauffeur.id) {
-            <option [value]="chauffeur.id">{{ chauffeur.fullName || chauffeur.username }}</option>
+          @for (chauffeur of chauffeurs; track chauffeur.publicId) {
+            <option [value]="chauffeur.publicId">{{ chauffeur.fullName || chauffeur.telephone }}</option>
           }
         </select>
+        <span class="field-hint">Chauffeurs actifs de la ville de départ sélectionnée. La disponibilité à la date/heure exacte est vérifiée à l'enregistrement.</span>
       </div>
       <div class="form-group">
         <label>Distance (km)</label>
@@ -231,7 +239,7 @@
     <div class="modal-body">
       <div class="form-group">
         <label>Ville de départ</label>
-        <select [(ngModel)]="trajetEditer.villeDepart.id" class="form-select">
+        <select [(ngModel)]="trajetEditer.villeDepart.id" (ngModelChange)="onVilleDepartChange(trajetEditer.villeDepart.id, trajetEditer)" class="form-select">
           <option value="">Sélectionner une ville</option>
           @for (ville of villes; track ville.id) {
             <option [value]="ville.id">{{ ville.nomVille }} ({{ ville.region }})</option>
@@ -260,8 +268,8 @@
         <label>Chauffeur</label>
         <select [(ngModel)]="trajetEditer.chauffeurId" class="form-select">
           <option value="">Sélectionner un chauffeur</option>
-          @for (chauffeur of chauffeurs; track chauffeur.id) {
-            <option [value]="chauffeur.id">{{ chauffeur.fullName || chauffeur.username }}</option>
+          @for (chauffeur of chauffeurs; track chauffeur.publicId) {
+            <option [value]="chauffeur.publicId">{{ chauffeur.fullName || chauffeur.telephone }}</option>
           }
         </select>
       </div>
@@ -298,6 +306,142 @@
     <div class="modal-footer">
       <button class="btn-secondary" (click)="afficherEditTrajet = false; trajetEditer = null">Annuler</button>
       <button class="btn-primary" (click)="soumettreModification()">Enregistrer les modifications</button>
+    </div>
+  </div>
+</div>
+}
+
+<!-- Modale de détail (voir plus) -->
+@if (afficherDetailTrajet && trajetVoir) {
+<div class="custom-modal-backdrop">
+  <div class="custom-modal-box detail-trajet-modal">
+    <div class="modal-header">
+      <h2>Détail du trajet</h2>
+      <button class="close-icon-btn" (click)="fermerDetail()">
+        <span class="material-icons">close</span>
+      </button>
+    </div>
+    <div class="modal-body">
+      <div class="detail-trajet-itineraire">
+        <div class="itineraire-ville">
+          <span class="material-icons location-icon">location_on</span>
+          <span>{{ trajetVoir.villeDepart.nomVille }}</span>
+        </div>
+        <span class="material-icons itineraire-arrow">arrow_forward</span>
+        <div class="itineraire-ville">
+          <span class="material-icons location-icon">place</span>
+          <span>{{ trajetVoir.villeArrivee.nomVille }}</span>
+        </div>
+      </div>
+      <div class="detail-grid">
+        <div class="detail-item">
+          <span class="detail-label">Statut</span>
+          <span class="statut-badge" [ngClass]="getStatutClass(trajetVoir.statut)">
+            {{ getStatutLibelle(trajetVoir.statut) }}
+          </span>
+        </div>
+        <div class="detail-item">
+          <span class="detail-label">Véhicule</span>
+          <span class="detail-value">{{ trajetVoir.vehicule.marque }} {{ trajetVoir.vehicule.modele }} ({{ trajetVoir.vehicule.immatriculation }})</span>
+        </div>
+        <div class="detail-item">
+          <span class="detail-label">Chauffeur</span>
+          <span class="detail-value">{{ trajetVoir.chauffeurNom || '—' }}</span>
+        </div>
+        <div class="detail-item">
+          <span class="detail-label">Agence</span>
+          <span class="detail-value">{{ trajetVoir.agenceNom || '—' }}</span>
+        </div>
+        <div class="detail-item">
+          <span class="detail-label">Date de départ</span>
+          <span class="detail-value">{{ trajetVoir.dateDepart }}</span>
+        </div>
+        <div class="detail-item">
+          <span class="detail-label">Heure de départ</span>
+          <span class="detail-value">{{ trajetVoir.heureDepart }}</span>
+        </div>
+        <div class="detail-item">
+          <span class="detail-label">Distance</span>
+          <span class="detail-value">{{ trajetVoir.distance }} km</span>
+        </div>
+        <div class="detail-item">
+          <span class="detail-label">Durée estimée</span>
+          <span class="detail-value">{{ trajetVoir.dureeEstimee }}</span>
+        </div>
+        <div class="detail-item">
+          <span class="detail-label">Tarif</span>
+          <span class="detail-value">{{ trajetVoir.tarif }} FCFA</span>
+        </div>
+      </div>
+
+      <!-- Statistiques du trajet -->
+      <div class="detail-section-title">Occupation &amp; recettes</div>
+      @if (chargementReservationsTrajet) {
+        <div class="detail-loading">Chargement…</div>
+      } @else if (statsTrajet) {
+        <div class="stats-grid">
+          <div class="stat-tile">
+            <span class="stat-value">{{ statsTrajet.placesReservees }} / {{ statsTrajet.capacite }}</span>
+            <span class="stat-label">Places réservées</span>
+          </div>
+          <div class="stat-tile">
+            <span class="stat-value">{{ statsTrajet.placesDisponibles }}</span>
+            <span class="stat-label">Places disponibles</span>
+          </div>
+          <div class="stat-tile">
+            <span class="stat-value" [class.stat-value-warn]="statsTrajet.tauxRemplissage >= 90">{{ statsTrajet.tauxRemplissage }}%</span>
+            <span class="stat-label">Taux de remplissage</span>
+          </div>
+          <div class="stat-tile">
+            <span class="stat-value">{{ statsTrajet.montantEncaisse | number }} FCFA</span>
+            <span class="stat-label">Montant encaissé</span>
+          </div>
+        </div>
+      }
+
+      <!-- Réservations liées -->
+      <div class="detail-section-title">Réservations liées ({{ reservationsDuTrajet.length }})</div>
+      @if (chargementReservationsTrajet) {
+        <div class="detail-loading">Chargement…</div>
+      } @else if (reservationsDuTrajet.length === 0) {
+        <div class="detail-empty">Aucune réservation pour ce trajet.</div>
+      } @else {
+        <div class="reservations-liees-table">
+          <table>
+            <thead>
+              <tr>
+                <th>Responsable</th>
+                <th>Places</th>
+                <th>Type</th>
+                <th>Statut</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (res of reservationsDuTrajet; track res.id) {
+                <tr>
+                  <td>{{ res.nomResponsable || '—' }}</td>
+                  <td>{{ res.nombrePlace }}</td>
+                  <td>{{ res.typeReservation === 'EN_LIGNE' ? 'En ligne' : 'Présentiel' }}</td>
+                  <td>
+                    <span class="statut-badge-sm" [ngClass]="'statut-' + res.statut.toLowerCase()">
+                      {{ getStatutReservationLibelle(res.statut) }}
+                    </span>
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
+    </div>
+    <div class="modal-footer">
+      <button class="btn-secondary" (click)="fermerDetail()">Fermer</button>
+      @if (peutGerer) {
+        <button class="btn-primary" (click)="fermerDetail(); ouvrirEdit(trajetVoir)">
+          <span class="material-icons">edit</span>
+          Modifier
+        </button>
+      }
     </div>
   </div>
 </div>

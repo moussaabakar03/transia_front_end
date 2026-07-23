@@ -1,10 +1,30 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { forkJoin } from 'rxjs';
 import { Sidebar } from '../../../shared/composants/sidebar/sidebar';
 import { Header } from '../../../shared/composants/header/header';
 import { Vehicule, VehiculePayload, StatutVehicule } from '../../../shared/models/vehicule';
 import { VehiculeService } from '../../../core/services/transport/vehicule-service';
+import { VilleService } from '../../../core/services/transport/ville-service';
+import { AgenceService } from '../../../core/services/agence.service';
+import { Ville } from '../../../shared/models/ville';
+import { Agence } from '../../../shared/models/agence.model';
+import { CurrentUserService } from '../../../core/services/current-user.service';
+
+const VEHICULE_VIDE: VehiculePayload = {
+  marque: '',
+  modele: '',
+  immatriculation: '',
+  capacite: 0,
+  capaciteSoute: 0,
+  kilometrage: 0,
+  statut: StatutVehicule.DISPONIBLE,
+  image: '',
+  villeBaseId: '',
+  villeActuelleId: '',
+  agenceId: ''
+};
 
 @Component({
   selector: 'app-vehicules',
@@ -20,20 +40,12 @@ export class Vehicules implements OnInit {
   // États des modales (ou formulaires d'action)
   afficherCreationVehicule: boolean = false;
   afficherEditVehicule: boolean = false;
+  afficherDetailVehicule: boolean = false;
 
   // Données éditées / en cours
   vehiculeEditer: Vehicule | null = null;
-  nouveauVehicule: VehiculePayload = { 
-    marque: '', 
-    modele: '', 
-    immatriculation: '', 
-    capacite: 0, 
-    capaciteSoute: 0,
-    statut: StatutVehicule.DISPONIBLE,
-    image: '',
-    villeBaseId: '',
-    villeActuelleId: ''
-  };
+  vehiculeVoir: Vehicule | null = null;
+  nouveauVehicule: VehiculePayload = { ...VEHICULE_VIDE };
 
   // Gestion des fichiers image
   selectedFile: File | null = null;
@@ -51,13 +63,52 @@ export class Vehicules implements OnInit {
   tousLesVehicules: Vehicule[] = [];
   resultatsFiltres: Vehicule[] = [];
 
+  // Listes pour les select dropdowns
+  villes: Ville[] = [];
+  agences: Agence[] = [];
+  agencesFiltrees: Agence[] = [];
+
   // Enum pour le template
   StatutVehicule = StatutVehicule;
 
-  constructor(private vehiculeService: VehiculeService) {}
+  // Droits d'écriture (SUPER_ADMIN/ADMIN_AGENCE, cf. VehiculeController côté backend)
+  peutGerer: boolean = false;
+
+  constructor(
+    private vehiculeService: VehiculeService,
+    private villeService: VilleService,
+    private agenceService: AgenceService,
+    private currentUser: CurrentUserService
+  ) {}
 
   ngOnInit(): void {
+    this.peutGerer = this.currentUser.peutGererTransport();
     this.loadVehicules();
+    this.loadVillesEtAgences();
+  }
+
+  loadVillesEtAgences(): void {
+    forkJoin({
+      villes: this.villeService.getAllVilles(),
+      agences: this.agenceService.getAll()
+    }).subscribe({
+      next: (r) => {
+        this.villes = r.villes || [];
+        this.agences = r.agences || [];
+        this.agencesFiltrees = this.agences;
+      },
+      error: (err) => console.error('Erreur de chargement des villes/agences', err)
+    });
+  }
+
+  // Filtre la liste des agences proposées selon la ville de base choisie
+  onVilleBaseChange(payload: VehiculePayload): void {
+    if (!payload.villeBaseId) {
+      this.agencesFiltrees = this.agences;
+      return;
+    }
+    this.agencesFiltrees = this.agences.filter(a => a.villeId === payload.villeBaseId);
+    payload.agenceId = '';
   }
 
   // Chargement initial depuis l'API
@@ -126,7 +177,7 @@ export class Vehicules implements OnInit {
   // Suppression d'un véhicule avec confirmation
   supprimerVehicule(id: string | undefined, immatriculation: string): void {
     if (!id) return;
-    
+
     if (confirm(`Voulez-vous vraiment supprimer le véhicule ${immatriculation} ?`)) {
       this.vehiculeService.delete(id).subscribe({
         next: () => {
@@ -136,7 +187,7 @@ export class Vehicules implements OnInit {
         error: (err) => {
           console.error('Erreur lors de la suppression', err);
           const errorMsg = err.error?.message || err.error || 'Impossible de supprimer ce véhicule.';
-          
+
           // Check if it's a foreign key constraint error
           if (errorMsg.includes('foreign key') || errorMsg.includes('constraint') || errorMsg.includes('lié') || errorMsg.includes('référencé')) {
             alert('Impossible de supprimer ce véhicule car il est lié à d\'autres données (trajets, réservations, etc.). Veuillez d\'abord supprimer ou modifier ces données avant de supprimer le véhicule.');
@@ -150,17 +201,8 @@ export class Vehicules implements OnInit {
 
   // Actions de création
   ouvrirCreation(): void {
-    this.nouveauVehicule = { 
-      marque: '', 
-      modele: '', 
-      immatriculation: '', 
-      capacite: 0, 
-      capaciteSoute: 0,
-      statut: StatutVehicule.DISPONIBLE,
-      image: '',
-      villeBaseId: '',
-      villeActuelleId: ''
-    };
+    this.nouveauVehicule = { ...VEHICULE_VIDE };
+    this.agencesFiltrees = this.agences;
     this.selectedFile = null;
     this.imagePreview = '';
     this.afficherCreationVehicule = true;
@@ -171,7 +213,7 @@ export class Vehicules implements OnInit {
     const input = event.target as HTMLInputElement;
     if (input.files && input.files[0]) {
       this.selectedFile = input.files[0];
-      
+
       // Créer un aperçu de l'image
       const reader = new FileReader();
       reader.onload = (e: ProgressEvent<FileReader>) => {
@@ -190,12 +232,12 @@ export class Vehicules implements OnInit {
         img.onload = () => {
           const canvas = document.createElement('canvas');
           const ctx = canvas.getContext('2d');
-          
+
           // Redimensionner l'image à max 300x300 pour réduire la taille
           const maxSize = 300;
           let width = img.width;
           let height = img.height;
-          
+
           if (width > height) {
             if (width > maxSize) {
               height *= maxSize / width;
@@ -207,12 +249,12 @@ export class Vehicules implements OnInit {
               height = maxSize;
             }
           }
-          
+
           canvas.width = width;
           canvas.height = height;
-          
+
           ctx?.drawImage(img, 0, 0, width, height);
-          
+
           // Compresser avec qualité 0.7
           const compressedBase64 = canvas.toDataURL('image/jpeg', 0.7);
           resolve(compressedBase64);
@@ -226,7 +268,7 @@ export class Vehicules implements OnInit {
   }
 
   soumettreCreation(): void {
-    if (!this.nouveauVehicule.marque || !this.nouveauVehicule.modele || 
+    if (!this.nouveauVehicule.marque || !this.nouveauVehicule.modele ||
         !this.nouveauVehicule.immatriculation || this.nouveauVehicule.capacite <= 0) {
       alert('Veuillez remplir tous les champs obligatoires.');
       return;
@@ -259,6 +301,9 @@ export class Vehicules implements OnInit {
   // Actions d'édition
   ouvrirEdit(vehicule: Vehicule): void {
     this.vehiculeEditer = { ...vehicule };
+    this.agencesFiltrees = vehicule.villeBaseId
+      ? this.agences.filter(a => a.villeId === vehicule.villeBaseId)
+      : this.agences;
     this.selectedFile = null;
     this.imagePreview = vehicule.image || '';
     this.afficherEditVehicule = true;
@@ -294,10 +339,12 @@ export class Vehicules implements OnInit {
       immatriculation: this.vehiculeEditer.immatriculation,
       capacite: this.vehiculeEditer.capacite,
       capaciteSoute: this.vehiculeEditer.capaciteSoute,
+      kilometrage: this.vehiculeEditer.kilometrage,
       statut: this.vehiculeEditer.statut,
       image: this.vehiculeEditer.image || '',
       villeBaseId: this.vehiculeEditer.villeBaseId,
-      villeActuelleId: this.vehiculeEditer.villeActuelleId
+      villeActuelleId: this.vehiculeEditer.villeActuelleId,
+      agenceId: this.vehiculeEditer.agenceId
     };
 
     this.vehiculeService.update(this.vehiculeEditer.id, payload).subscribe({
@@ -308,6 +355,17 @@ export class Vehicules implements OnInit {
       },
       error: (err) => console.error('Erreur lors de la modification', err)
     });
+  }
+
+  // Voir le détail d'un véhicule
+  ouvrirDetail(vehicule: Vehicule): void {
+    this.vehiculeVoir = vehicule;
+    this.afficherDetailVehicule = true;
+  }
+
+  fermerDetail(): void {
+    this.afficherDetailVehicule = false;
+    this.vehiculeVoir = null;
   }
 
   // Helper pour obtenir le libellé du statut
