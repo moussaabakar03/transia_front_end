@@ -1,206 +1,248 @@
-<app-header></app-header>
-<app-sidebar></app-sidebar>
+<div class="dashboard-layout">
+  <app-sidebar></app-sidebar>
 
-<div class="main-content">
-  <div class="page-header">
-    <h1>Gestion des Tournées</h1>
-    <button class="btn btn-primary" (click)="openModal(ModalMode.AJOUT)">
-      <i class="icon-plus"></i> Nouvelle Tournée
-    </button>
-  </div>
+  <div class="main-content-area">
+    <app-header (actionCreer)="openModal(ModalMode.AJOUT)"></app-header>
 
-  <!-- Filters -->
-  <div class="filters">
-    <div class="filter-group">
-      <input 
-        type="text" 
-        class="form-control" 
-        placeholder="Rechercher par zone, livreur..." 
-        [(ngModel)]="searchTerm" 
-        (input)="applyFilters()"
-      >
+    <div class="page-body">
+
+      <!-- ── En-tête ── -->
+      <div class="dashboard-action-bar">
+        <div class="welcome-text">
+          <h1>Tournées de collecte</h1>
+          <p>Regroupez les demandes de collecte d'un livreur par journée/zone</p>
+        </div>
+        <button class="btn-blue-action-local" (click)="openModal(ModalMode.AJOUT)">
+          <span class="material-icons">add</span>
+          NOUVELLE TOURNÉE
+        </button>
+      </div>
+
+      <!-- ── Barre de recherche + filtres ── -->
+      <div class="search-bar">
+        <span class="material-icons">search</span>
+        <input type="text" placeholder="Rechercher par zone, livreur..."
+               [(ngModel)]="searchTerm" (input)="applyFilters()" />
+        <input type="date" class="filter-date" [(ngModel)]="selectedDate" (change)="applyFilters()" />
+        <select class="filter-select" [(ngModel)]="selectedLivreur" (change)="applyFilters()">
+          <option value="">Tous les livreurs</option>
+          <option *ngFor="let l of livreurs" [value]="l.publicId">{{ l.fullName }}</option>
+        </select>
+        <span class="count-badge">{{ filteredTournees.length }} résultat(s)</span>
+        <button class="btn-refresh" (click)="loadTournees()" title="Actualiser">
+          <span class="material-icons">refresh</span>
+        </button>
+      </div>
+
+      <!-- ── Chargement ── -->
+      <div *ngIf="isLoading" class="loading-state">
+        <div class="spinner"></div>
+        <p>Chargement des tournées...</p>
+      </div>
+
+      <!-- ── Erreur ── -->
+      <div *ngIf="errorMessage && !isLoading" class="alert-error">
+        <span class="material-icons">error_outline</span>
+        <span>{{ errorMessage }}</span>
+        <button (click)="loadTournees()">Réessayer</button>
+      </div>
+
+      <!-- ── Tableau ── -->
+      <div *ngIf="!isLoading && !errorMessage" class="table-container-tournees">
+        <table class="custom-tournees-table">
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Livreur</th>
+              <th>Zone</th>
+              <th>Statut</th>
+              <th>Collectes</th>
+              <th style="width:150px; text-align:right">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngIf="paginatedTournees.length === 0">
+              <td colspan="6">
+                <div class="empty-state">
+                  <span class="material-icons">local_shipping</span>
+                  <p>Aucune tournée trouvée</p>
+                  <button class="btn-blue-action-local" (click)="openModal(ModalMode.AJOUT)">
+                    <span class="material-icons">add</span> Nouvelle tournée
+                  </button>
+                </div>
+              </td>
+            </tr>
+            <tr *ngFor="let t of paginatedTournees">
+              <td class="fw-medium">{{ formatDate(t.dateTournee) }}</td>
+              <td>
+                <span *ngIf="t.livreur">{{ t.livreur.fullName }}</span>
+                <span *ngIf="!t.livreur" class="text-muted-sm">Non assigné</span>
+              </td>
+              <td>{{ t.zone || '—' }}</td>
+              <td>
+                <span class="statut-badge {{ getStatutClass(t.statut!) }}">{{ t.statut }}</span>
+              </td>
+              <td><span class="tranche-chip">{{ t.demandesCollecte?.length || 0 }}</span></td>
+              <td style="text-align:right">
+                <div class="actions-wrapper">
+                  <button class="btn-table-action view" (click)="openModal(ModalMode.VISUALISATION, t)" title="Détails"><span class="material-icons">visibility</span></button>
+                  <button class="btn-table-action edit" (click)="openModal(ModalMode.MODIFICATION, t)" title="Modifier"><span class="material-icons">edit</span></button>
+                  <button class="btn-table-action delete" (click)="deleteTournee(t.id!)" title="Supprimer"><span class="material-icons">delete</span></button>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+
+        <!-- Pagination -->
+        <div *ngIf="totalPages > 1" class="pagination-container">
+          <div class="pagination-info">Page {{ currentPage }} / {{ totalPages }}</div>
+          <div class="pagination-buttons">
+            <button class="btn-pag" (click)="changePage(currentPage - 1)" [disabled]="currentPage === 1">
+              <span class="material-icons">chevron_left</span>
+            </button>
+            <button class="btn-pag" (click)="changePage(currentPage + 1)" [disabled]="currentPage === totalPages">
+              <span class="material-icons">chevron_right</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
     </div>
-    <div class="filter-group">
-      <input 
-        type="date" 
-        class="form-control" 
-        [(ngModel)]="selectedDate" 
-        (change)="applyFilters()"
-      >
+  </div>
+</div>
+
+
+<!-- ═══════════════════════════════════════════════
+     MODAL — CRÉATION / MODIFICATION
+     ═══════════════════════════════════════════════ -->
+<div class="modal-overlay" [class.show]="isModalOpen && (modalMode === ModalMode.AJOUT || modalMode === ModalMode.MODIFICATION)"
+     (click)="closeModal()">
+  <div class="modal-sheet modal-sheet-lg" role="dialog" (click)="$event.stopPropagation()">
+
+    <div class="modal-top-bar">
+      <div class="modal-top-icon"><span class="material-icons">local_shipping</span></div>
+      <div class="modal-top-title">
+        <h5>{{ modalMode === ModalMode.AJOUT ? 'Nouvelle tournée' : 'Modifier la tournée' }}</h5>
+        <p>Regroupez des demandes de collecte pour un livreur</p>
+      </div>
+      <button class="modal-top-close" (click)="closeModal()"><span class="material-icons">close</span></button>
     </div>
-    <div class="filter-group">
-      <select class="form-control" [(ngModel)]="selectedLivreur" (change)="applyFilters()">
-        <option value="">Tous les livreurs</option>
-        <option *ngFor="let livreur of livreurs" [value]="livreur.id">
-          {{ livreur.fullName }}
-        </option>
-      </select>
-    </div>
-  </div>
 
-  <!-- Loading -->
-  <div *ngIf="isLoading" class="loading">
-    <div class="spinner"></div>
-    <p>Chargement des tournées...</p>
-  </div>
+    <div class="modal-content-area">
+      <div *ngIf="formError" class="alert-error"><span class="material-icons">error</span> {{ formError }}</div>
+      <div *ngIf="formSuccess" class="alert-success"><span class="material-icons">check_circle</span> {{ formSuccess }}</div>
 
-  <!-- Error -->
-  <div *ngIf="errorMessage" class="alert alert-error">
-    {{ errorMessage }}
-  </div>
+      <div class="form-section">
+        <div class="form-section-title"><span class="material-icons">info</span> Informations</div>
+        <div class="form-grid">
+          <div class="form-field-half">
+            <label>Date de tournée <span class="required">*</span></label>
+            <div class="input-wrap">
+              <span class="material-icons input-icon">calendar_today</span>
+              <input type="date" class="form-control" [(ngModel)]="form.dateTournee" name="dateTournee" />
+            </div>
+            <span *ngIf="formErrors.dateTournee" class="field-error-msg"><span class="material-icons">error_outline</span> {{ formErrors.dateTournee }}</span>
+          </div>
+          <div class="form-field-half">
+            <label>Livreur <span class="required">*</span></label>
+            <div class="input-wrap">
+              <span class="material-icons input-icon">person</span>
+              <select class="form-select" [(ngModel)]="form.livreurId" name="livreurId">
+                <option value="">— Sélectionner —</option>
+                <option *ngFor="let l of livreurs" [value]="l.publicId">{{ l.fullName }}</option>
+              </select>
+            </div>
+            <span *ngIf="formErrors.livreurId" class="field-error-msg"><span class="material-icons">error_outline</span> {{ formErrors.livreurId }}</span>
+          </div>
+          <div class="form-field-full">
+            <label>Zone <span class="optional">(optionnel)</span></label>
+            <div class="input-wrap">
+              <span class="material-icons input-icon">map</span>
+              <input type="text" class="form-control" placeholder="Ex : Nord, Sud, Centre..." [(ngModel)]="form.zone" name="zone" />
+            </div>
+          </div>
+        </div>
+      </div>
 
-  <!-- Table -->
-  <div *ngIf="!isLoading && !errorMessage" class="table-container">
-    <table class="data-table">
-      <thead>
-        <tr>
-          <th>Date</th>
-          <th>Livreur</th>
-          <th>Zone</th>
-          <th>Statut</th>
-          <th>Nombre de colis</th>
-          <th>Actions</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr *ngFor="let tournee of paginatedTournees">
-          <td>{{ formatDate(tournee.dateTournee) }}</td>
-          <td>
-            <span *ngIf="tournee.livreur">{{ tournee.livreur.fullName }}</span>
-            <span *ngIf="!tournee.livreur" class="text-muted">Non assigné</span>
-          </td>
-          <td>{{ tournee.zone || '-' }}</td>
-          <td>
-            <span class="status-badge {{ getStatutClass(tournee.statut!) }}">
-              {{ tournee.statut }}
+      <div class="form-section">
+        <div class="form-section-title"><span class="material-icons">home_work</span> Demandes de collecte à inclure</div>
+        <div class="colis-selection">
+          <label class="checkbox-label" *ngFor="let demande of availableDemandes">
+            <input type="checkbox"
+                   [checked]="isDemandeSelected(demande.id!)"
+                   (change)="toggleDemandeSelection(demande.id!)" />
+            <span class="colis-info">
+              <strong>{{ demande.expediteurNom }}</strong> — {{ demande.adresseCollecte }}
             </span>
-          </td>
-          <td>{{ tournee.colis?.length || 0 }}</td>
-          <td class="actions">
-            <button class="btn btn-sm btn-info" title="Voir détails" (click)="openModal(ModalMode.VISUALISATION, tournee)">
-              <i class="icon-eye"></i>
-            </button>
-            <button class="btn btn-sm btn-warning" title="Modifier" (click)="openModal(ModalMode.MODIFICATION, tournee)">
-              <i class="icon-edit"></i>
-            </button>
-            <button class="btn btn-sm btn-danger" title="Supprimer" (click)="deleteTournee(tournee.id!)">
-              <i class="icon-trash"></i>
-            </button>
-          </td>
-        </tr>
-        <tr *ngIf="paginatedTournees.length === 0">
-          <td colspan="6" class="text-center">Aucune tournée trouvée</td>
-        </tr>
-      </tbody>
-    </table>
+          </label>
+          <div *ngIf="availableDemandes.length === 0" class="text-muted-sm">
+            Aucune demande de collecte disponible
+          </div>
+        </div>
+      </div>
+    </div>
 
-    <!-- Pagination -->
-    <div *ngIf="totalPages > 1" class="pagination">
-      <button class="btn btn-sm" (click)="changePage(currentPage - 1)" [disabled]="currentPage === 1">
-        Précédent
-      </button>
-      <span class="page-info">Page {{ currentPage }} / {{ totalPages }}</span>
-      <button class="btn btn-sm" (click)="changePage(currentPage + 1)" [disabled]="currentPage === totalPages">
-        Suivant
+    <div class="modal-actions">
+      <button class="btn-cancel" (click)="closeModal()" [disabled]="isSubmitting">Annuler</button>
+      <button class="btn-primary" (click)="submitForm()" [disabled]="isSubmitting">
+        <span *ngIf="isSubmitting" class="spinner-small"></span>
+        <span *ngIf="!isSubmitting" class="material-icons">save</span>
+        {{ isSubmitting ? 'Enregistrement...' : (modalMode === ModalMode.AJOUT ? 'Créer' : 'Enregistrer') }}
       </button>
     </div>
   </div>
 </div>
 
-<!-- Modal -->
-<div *ngIf="isModalOpen" class="modal-overlay" (click)="closeModal()">
-  <div class="modal" (click)="$event.stopPropagation()">
-    <div class="modal-header">
-      <h2 *ngIf="modalMode === ModalMode.AJOUT">Nouvelle Tournée</h2>
-      <h2 *ngIf="modalMode === ModalMode.MODIFICATION">Modifier Tournée</h2>
-      <h2 *ngIf="modalMode === ModalMode.VISUALISATION">Détails de la Tournée</h2>
-      <button class="btn-close" (click)="closeModal()">&times;</button>
+
+<!-- ═══════════════════════════════════════════════
+     MODAL — VISUALISATION
+     ═══════════════════════════════════════════════ -->
+<div class="modal-overlay" [class.show]="isModalOpen && modalMode === ModalMode.VISUALISATION" (click)="closeModal()">
+  <div class="modal-sheet" role="dialog" (click)="$event.stopPropagation()">
+    <div class="modal-top-bar">
+      <div class="modal-top-icon"><span class="material-icons">local_shipping</span></div>
+      <div class="modal-top-title">
+        <h5>Détails de la tournée</h5>
+        <p>{{ formatDate(form.dateTournee) }}</p>
+      </div>
+      <button class="modal-top-close" (click)="closeModal()"><span class="material-icons">close</span></button>
     </div>
 
-    <div class="modal-body">
-      <div *ngIf="formError" class="alert alert-error">{{ formError }}</div>
-      <div *ngIf="formSuccess" class="alert alert-success">{{ formSuccess }}</div>
-
-      <form *ngIf="modalMode !== ModalMode.VISUALISATION" (ngSubmit)="submitForm()">
-        <div class="form-row">
-          <div class="form-group">
-            <label>Date de tournée *</label>
-            <input type="date" class="form-control" [(ngModel)]="form.dateTournee" name="dateTournee">
-            <span *ngIf="formErrors.dateTournee" class="error">{{ formErrors.dateTournee }}</span>
+    <div class="modal-content-area">
+      <div class="form-section">
+        <div class="form-section-title"><span class="material-icons">info</span> Informations</div>
+        <div class="view-grid">
+          <div class="detail-item">
+            <div class="detail-item-label">Livreur</div>
+            <div class="detail-item-value">{{ form.livreurId ? getLivreurName(form.livreurId) : '—' }}</div>
           </div>
-          <div class="form-group">
-            <label>Livreur *</label>
-            <select class="form-control" [(ngModel)]="form.livreurId" name="livreurId">
-              <option value="">Sélectionner un livreur</option>
-              <option *ngFor="let livreur of livreurs" [value]="livreur.id">
-                {{ livreur.fullName }}
-              </option>
-            </select>
-            <span *ngIf="formErrors.livreurId" class="error">{{ formErrors.livreurId }}</span>
+          <div class="detail-item">
+            <div class="detail-item-label">Zone</div>
+            <div class="detail-item-value">{{ form.zone || '—' }}</div>
           </div>
-        </div>
-
-        <div class="form-group">
-          <label>Zone (secteur)</label>
-          <input type="text" class="form-control" [(ngModel)]="form.zone" name="zone" placeholder="Ex: Nord, Sud, Centre...">
-        </div>
-
-        <div class="form-group">
-          <label>Colis à inclure</label>
-          <div class="colis-selection">
-            <div *ngFor="let colis of availableColis" class="colis-item">
-              <label class="checkbox-label">
-                <input 
-                  type="checkbox" 
-                  [checked]="isColisSelected(colis.id!)" 
-                  (change)="toggleColisSelection(colis.id!)"
-                >
-                <span class="colis-info">
-                  <strong>{{ colis.numeroSuivi }}</strong> - {{ colis.nomDestinataire }} ({{ colis.adresseDestinataire }})
-                </span>
-              </label>
-            </div>
-            <div *ngIf="availableColis.length === 0" class="text-muted">
-              Aucun colis disponible (les colis doivent être assignés à un livreur)
-            </div>
+          <div class="detail-item">
+            <div class="detail-item-label">Statut</div>
+            <div class="detail-item-value">{{ editingId ? getTourneeStatut(editingId) : '—' }}</div>
           </div>
-        </div>
-
-        <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" (click)="closeModal()">Annuler</button>
-          <button type="submit" class="btn btn-primary" [disabled]="isSubmitting">
-            {{ isSubmitting ? 'En cours...' : (modalMode === ModalMode.AJOUT ? 'Créer' : 'Mettre à jour') }}
-          </button>
-        </div>
-      </form>
-
-      <!-- Visualisation mode -->
-      <div *ngIf="modalMode === ModalMode.VISUALISATION">
-        <div class="details-view">
-          <p><strong>Date:</strong> {{ formatDate(form.dateTournee) }}</p>
-          <p *ngIf="form.livreurId"><strong>Livreur:</strong> 
-            {{ getLivreurName(form.livreurId) }}
-          </p>
-          <p *ngIf="form.zone"><strong>Zone:</strong> {{ form.zone }}</p>
-          <p><strong>Statut:</strong> {{ editingId ? getTourneeStatut(editingId) : '-' }}</p>
-          
-          <h3>Colis assignés</h3>
-          <div *ngIf="editingId" class="colis-list">
-            <div *ngFor="let colis of getTourneeColis(editingId)" class="colis-detail-item">
-              <strong>{{ colis.numeroSuivi }}</strong> - {{ colis.nomDestinataire }}
-              <button class="btn btn-sm btn-danger" (click)="removeColisFromTournee(editingId!, colis.id!)">
-                Retirer
-              </button>
-            </div>
-            <div *ngIf="!hasTourneeColis(editingId)" class="text-muted">
-              Aucun colis assigné
-            </div>
-          </div>
-        </div>
-        <div class="modal-footer">
-          <button class="btn btn-secondary" (click)="closeModal()">Fermer</button>
         </div>
       </div>
+
+      <div class="form-section">
+        <div class="form-section-title"><span class="material-icons">home_work</span> Demandes de collecte assignées</div>
+        <div class="colis-list" *ngIf="editingId">
+          <div class="colis-detail-item" *ngFor="let demande of getTourneeDemandes(editingId)">
+            <span><strong>{{ demande.expediteurNom }}</strong> — {{ demande.adresseCollecte }}</span>
+            <button class="btn-table-action delete" (click)="removeDemandeFromTournee(editingId!, demande.id!)" title="Retirer">
+              <span class="material-icons">close</span>
+            </button>
+          </div>
+          <div *ngIf="!hasTourneeDemandes(editingId)" class="text-muted-sm">Aucune demande assignée</div>
+        </div>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-cancel" (click)="closeModal()">Fermer</button>
     </div>
   </div>
 </div>

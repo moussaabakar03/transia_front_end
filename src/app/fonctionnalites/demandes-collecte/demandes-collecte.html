@@ -1,0 +1,128 @@
+<div class="dashboard-layout">
+  <app-sidebar></app-sidebar>
+
+  <div class="main-content-area">
+    <app-header></app-header>
+
+    <div class="page-body">
+
+      <div class="dashboard-action-bar">
+        <div class="welcome-text">
+          <h1>Demandes de collecte</h1>
+          <p>Enlèvements à domicile demandés par les clients depuis l'application</p>
+        </div>
+      </div>
+
+      <div class="search-bar">
+        <span class="material-icons">search</span>
+        <input type="text" placeholder="Rechercher par client, adresse..." [(ngModel)]="searchTerm" (input)="applyFilters()" />
+        <select class="filter-select" [(ngModel)]="selectedStatut" (change)="applyFilters()">
+          <option value="">Tous les statuts</option>
+          <option [value]="StatutCollecte.EN_ATTENTE">En attente</option>
+          <option [value]="StatutCollecte.EN_COURS">Livreur assigné</option>
+          <option [value]="StatutCollecte.COLLECTE">Collectée</option>
+          <option [value]="StatutCollecte.ANNULE">Annulée</option>
+        </select>
+        <span class="count-badge">{{ filteredDemandes.length }} résultat(s)</span>
+        <button class="btn-refresh" (click)="loadAll()" title="Actualiser">
+          <span class="material-icons">refresh</span>
+        </button>
+      </div>
+
+      <div *ngIf="isLoading" class="loading-state">
+        <div class="spinner"></div>
+        <p>Chargement des demandes...</p>
+      </div>
+
+      <div *ngIf="errorMessage && !isLoading" class="alert-error">
+        <span class="material-icons">error_outline</span>
+        <span>{{ errorMessage }}</span>
+        <button (click)="loadAll()">Réessayer</button>
+      </div>
+
+      <div *ngIf="!isLoading && !errorMessage" class="table-container-demandes">
+        <table class="custom-demandes-table">
+          <thead>
+            <tr>
+              <th>Client</th>
+              <th>Adresse de collecte</th>
+              <th>Date/heure souhaitée</th>
+              <th>Livreur</th>
+              <th>Statut</th>
+              <th style="width:140px; text-align:right">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngIf="filteredDemandes.length === 0">
+              <td colspan="6">
+                <div class="empty-state">
+                  <span class="material-icons">home_work</span>
+                  <p>Aucune demande de collecte</p>
+                </div>
+              </td>
+            </tr>
+            <tr *ngFor="let d of filteredDemandes">
+              <td><span class="fw-medium">{{ d.expediteurNom }}</span></td>
+              <td>{{ d.adresseCollecte }}</td>
+              <td>{{ formatDate(d.dateHeureCollecte) }}</td>
+              <td>{{ d.livreurNom || '—' }}</td>
+              <td>
+                <span class="statut-badge {{ getStatutConfig(d.statut).css }}">
+                  {{ getStatutConfig(d.statut).label }}
+                </span>
+              </td>
+              <td style="text-align:right">
+                <div class="actions-wrapper">
+                  <button class="btn-table-action assign" (click)="openAssigner(d)" title="Assigner un livreur" *ngIf="canAssign(d)">
+                    <span class="material-icons">person_add</span>
+                  </button>
+                  <button class="btn-table-action delete" (click)="annuler(d)" title="Annuler" *ngIf="canCancel(d)">
+                    <span class="material-icons">cancel</span>
+                  </button>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" [class.show]="isModalOpen" (click)="closeModal()">
+  <div class="modal-sheet modal-sheet-sm" role="dialog" (click)="$event.stopPropagation()">
+    <div class="modal-top-bar">
+      <div class="modal-top-icon"><span class="material-icons">person_add</span></div>
+      <div class="modal-top-title">
+        <h5>Assigner un livreur</h5>
+        <p>{{ selectedDemande?.expediteurNom }} — {{ selectedDemande?.adresseCollecte }}</p>
+      </div>
+      <button class="modal-top-close" (click)="closeModal()"><span class="material-icons">close</span></button>
+    </div>
+
+    <div class="modal-content-area">
+      <div *ngIf="formError" class="alert-error"><span class="material-icons">error</span> {{ formError }}</div>
+      <div class="form-field-full">
+        <label>Livreur <span class="required">*</span></label>
+        <select class="form-select" [(ngModel)]="selectedLivreurId">
+          <option value="">— Sélectionner un livreur —</option>
+          <option *ngFor="let l of livreurs" [value]="l.publicId">{{ l.fullName }}</option>
+        </select>
+      </div>
+      <div *ngIf="livreurs.length === 0" class="info-alert">
+        <span class="material-icons">info</span>
+        <span>Aucun livreur disponible.</span>
+      </div>
+    </div>
+
+    <div class="modal-actions">
+      <button class="btn-cancel" (click)="closeModal()" [disabled]="isSubmitting">Annuler</button>
+      <button class="btn-primary" (click)="submitAssigner()" [disabled]="isSubmitting || !selectedLivreurId">
+        <span *ngIf="isSubmitting" class="spinner-small"></span>
+        <span *ngIf="!isSubmitting" class="material-icons">check</span>
+        {{ isSubmitting ? 'Assignation...' : 'Confirmer' }}
+      </button>
+    </div>
+  </div>
+</div>

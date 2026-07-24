@@ -11,6 +11,8 @@ import { Feedbacks } from './fonctionnalites/feedbacks/feedbacks';
 import { ColisComponent } from './fonctionnalites/colis/colis';
 import { TourneesComponent } from './fonctionnalites/tournees/tournees';
 import { Agences } from './fonctionnalites/agences/agences';
+import { TarifsComponent } from './fonctionnalites/tarifs/tarifs';
+import { DemandesCollecteComponent } from './fonctionnalites/demandes-collecte/demandes-collecte';
 
 export const routes: Routes = [
   { path: '', redirectTo: 'login', pathMatch: 'full' },
@@ -30,7 +32,9 @@ export const routes: Routes = [
 
   // Colis & tournées
   { path: 'colis',               component: ColisComponent,    canActivate: [authGuard] },
+  { path: 'demandes-collecte',   component: DemandesCollecteComponent, canActivate: [authGuard] },
   { path: 'tournees',            component: TourneesComponent, canActivate: [authGuard] },
+  { path: 'tarifs-colis',        component: TarifsComponent,   canActivate: [authGuard] },
 
   // Admin
   { path: 'agences',             component: Agences,           canActivate: [authGuard] },

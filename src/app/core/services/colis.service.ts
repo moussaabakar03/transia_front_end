@@ -2,7 +2,7 @@ import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { environment } from '../../../environments/environment.development';
-import { Colis, ColisRequest, HistoriqueColis, StatutColis } from '../../shared/models/colis.model';
+import { Colis, ColisRequest, HistoriqueColis, StatutColis, TranchePoids } from '../../shared/models/colis.model';
 
 @Injectable({ providedIn: 'root' })
 export class ColisService {
@@ -10,13 +10,10 @@ export class ColisService {
 
   constructor(private http: HttpClient) {}
 
-  getAll(filters?: {
-    statut?: StatutColis;
-    livreurId?: string;
-    expediteurId?: string;
-    search?: string;
-  }): Observable<Colis[]> {
-    return this.http.get<Colis[]>(this.baseUrl, { params: filters as any });
+  getAll(agenceId?: string): Observable<Colis[]> {
+    return this.http.get<Colis[]>(this.baseUrl, {
+      params: agenceId ? { agenceId } : {}
+    });
   }
 
   getById(id: string): Observable<Colis> {
@@ -27,34 +24,32 @@ export class ColisService {
     return this.http.get<Colis>(`${this.baseUrl}/suivi/${numeroSuivi}`);
   }
 
-  create(payload: ColisRequest): Observable<Colis> {
+  getByStatut(statut: StatutColis): Observable<Colis[]> {
+    return this.http.get<Colis[]>(`${this.baseUrl}/statut/${statut}`);
+  }
+
+  enregistrerColis(payload: ColisRequest): Observable<Colis> {
     return this.http.post<Colis>(this.baseUrl, payload);
   }
 
-  createDemandeEnlevement(payload: ColisRequest): Observable<Colis> {
-    return this.http.post<Colis>(`${this.baseUrl}/demande-enlevement`, payload);
+  confirmerPeseeAjusterPrix(colisId: string, poidsReel: number, trancheReelle: TranchePoids): Observable<Colis> {
+    return this.http.put<Colis>(`${this.baseUrl}/${colisId}/pesee`, { poidsReel, trancheReelle });
   }
 
-  updatePartial(id: string, payload: Partial<ColisRequest>): Observable<Colis> {
-    return this.http.patch<Colis>(`${this.baseUrl}/${id}`, payload);
+  chargerColisInTrajet(colisId: string, trajetId: string): Observable<Colis> {
+    return this.http.put<Colis>(`${this.baseUrl}/${colisId}/charger`, null, { params: { trajetId } });
   }
 
-  assignerLivreur(colisId: string, livreurId: string): Observable<Colis> {
-    return this.http.post<Colis>(`${this.baseUrl}/${colisId}/assigner-livreur`, null, {
-      params: { livreurId }
-    });
+  receptionnerColis(colisId: string): Observable<Colis> {
+    return this.http.put<Colis>(`${this.baseUrl}/${colisId}/receptionner`, null);
   }
 
-  collecter(colisId: string, commentaire?: string): Observable<Colis> {
-    return this.http.post<Colis>(`${this.baseUrl}/${colisId}/collecter`, null, {
-      params: { commentaire: commentaire || '' }
-    });
+  demarrerLivraison(colisId: string, livreurId: string): Observable<Colis> {
+    return this.http.put<Colis>(`${this.baseUrl}/${colisId}/demarrer-livraison`, null, { params: { livreurId } });
   }
 
-  livrer(colisId: string, commentaire?: string): Observable<Colis> {
-    return this.http.post<Colis>(`${this.baseUrl}/${colisId}/livrer`, null, {
-      params: { commentaire: commentaire || '' }
-    });
+  confirmerLivraison(colisId: string): Observable<Colis> {
+    return this.http.put<Colis>(`${this.baseUrl}/${colisId}/confirmer-livraison`, null);
   }
 
   getHistorique(colisId: string): Observable<HistoriqueColis[]> {
@@ -63,15 +58,5 @@ export class ColisService {
 
   annuler(colisId: string): Observable<void> {
     return this.http.delete<void>(`${this.baseUrl}/${colisId}`);
-  }
-
-  findNearby(latitude: number, longitude: number, distanceKm?: number): Observable<Colis[]> {
-    return this.http.get<Colis[]>(`${this.baseUrl}/proximity/nearby`, {
-      params: {
-        latitude: latitude.toString(),
-        longitude: longitude.toString(),
-        distanceKm: (distanceKm || 10).toString()
-      }
-    });
   }
 }

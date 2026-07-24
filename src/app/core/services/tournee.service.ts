@@ -34,11 +34,11 @@ export class TourneeService {
     return this.http.delete<void>(`${this.baseUrl}/${id}`);
   }
 
-  addColisToTournee(tourneeId: string, colisId: string): Observable<Tournee> {
-    return this.http.post<Tournee>(`${this.baseUrl}/${tourneeId}/colis/${colisId}`, null);
+  addDemandeToTournee(tourneeId: string, demandeId: string): Observable<Tournee> {
+    return this.http.post<Tournee>(`${this.baseUrl}/${tourneeId}/demandes/${demandeId}`, null);
   }
 
-  removeColisFromTournee(tourneeId: string, colisId: string): Observable<Tournee> {
-    return this.http.delete<Tournee>(`${this.baseUrl}/${tourneeId}/colis/${colisId}`);
+  removeDemandeFromTournee(tourneeId: string, demandeId: string): Observable<Tournee> {
+    return this.http.delete<Tournee>(`${this.baseUrl}/${tourneeId}/demandes/${demandeId}`);
   }
 }

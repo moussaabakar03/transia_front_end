@@ -1,4 +1,4 @@
-import { Colis } from './colis.model';
+import { DemandeCollecte } from './demande-collecte.model';
 import { UserResponse } from './users';
 
 export interface Tournee {
@@ -7,7 +7,7 @@ export interface Tournee {
   livreurId?: string;
   livreur?: UserResponse;
   zone?: string;
-  colis?: Colis[];
+  demandesCollecte?: DemandeCollecte[];
   statut?: string;
 }
 
@@ -15,5 +15,5 @@ export interface TourneeRequest {
   dateTournee: string;
   livreurId: string;
   zone?: string;
-  colisIds?: string[];
+  demandeIds?: string[];
 }

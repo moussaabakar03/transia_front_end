@@ -1,0 +1,133 @@
+<div class="dashboard-layout">
+  <app-sidebar></app-sidebar>
+
+  <div class="main-content-area">
+    <app-header (actionCreer)="openCreate()"></app-header>
+
+    <div class="page-body">
+
+      <div class="dashboard-action-bar">
+        <div class="welcome-text">
+          <h1>Tarifs d'expédition</h1>
+          <p>Configurez les tarifs de colis par ville et tranche de poids</p>
+        </div>
+        <button class="btn-blue-action-local" (click)="openCreate()" *ngIf="peutGerer">
+          <span class="material-icons">add</span>
+          NOUVEAU TARIF
+        </button>
+      </div>
+
+      <div class="search-bar">
+        <span class="material-icons">search</span>
+        <input type="text" placeholder="Rechercher par ville..." [(ngModel)]="searchTerm" />
+        <span class="count-badge">{{ filteredTarifs.length }} résultat(s)</span>
+        <button class="btn-refresh" (click)="loadAll()" title="Actualiser">
+          <span class="material-icons">refresh</span>
+        </button>
+      </div>
+
+      <div *ngIf="isLoading" class="loading-state">
+        <div class="spinner"></div>
+        <p>Chargement des tarifs...</p>
+      </div>
+
+      <div *ngIf="errorMessage && !isLoading" class="alert-error">
+        <span class="material-icons">error_outline</span>
+        <span>{{ errorMessage }}</span>
+        <button (click)="loadAll()">Réessayer</button>
+      </div>
+
+      <div *ngIf="!isLoading && !errorMessage" class="table-container-tarifs">
+        <table class="custom-tarifs-table">
+          <thead>
+            <tr>
+              <th>Ville de départ</th>
+              <th>Ville d'arrivée</th>
+              <th>Tranche de poids</th>
+              <th>Tarif</th>
+              <th style="width:120px; text-align:right">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngIf="filteredTarifs.length === 0">
+              <td colspan="5">
+                <div class="empty-state">
+                  <span class="material-icons">local_shipping</span>
+                  <p>Aucun tarif configuré</p>
+                  <button class="btn-blue-action-local" (click)="openCreate()" *ngIf="peutGerer">
+                    <span class="material-icons">add</span> Nouveau tarif
+                  </button>
+                </div>
+              </td>
+            </tr>
+            <tr *ngFor="let t of filteredTarifs">
+              <td>{{ t.villeDepartNom }}</td>
+              <td>{{ t.villeArriveeNom }}</td>
+              <td><span class="tranche-chip">{{ getTrancheLabel(t.tranchePoids) }}</span></td>
+              <td><span class="tarif-value">{{ t.tarif | number }} FCFA</span></td>
+              <td style="text-align:right">
+                <div class="actions-wrapper" *ngIf="peutGerer">
+                  <button class="btn-table-action edit" (click)="openEdit(t)" title="Modifier"><span class="material-icons">edit</span></button>
+                  <button class="btn-table-action delete" (click)="supprimer(t)" title="Supprimer" *ngIf="peutSupprimer"><span class="material-icons">delete</span></button>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- Modal création/modification -->
+<div class="modal-overlay" [class.show]="isModalOpen" (click)="closeModal()">
+  <div class="modal-sheet modal-sheet-sm" role="dialog" (click)="$event.stopPropagation()">
+    <div class="modal-top-bar">
+      <div class="modal-top-icon"><span class="material-icons">local_shipping</span></div>
+      <div class="modal-top-title">
+        <h5>{{ modalMode === ModalMode.AJOUT ? 'Nouveau tarif' : 'Modifier le tarif' }}</h5>
+        <p>Prix d'expédition par ville et tranche de poids</p>
+      </div>
+      <button class="modal-top-close" (click)="closeModal()"><span class="material-icons">close</span></button>
+    </div>
+
+    <div class="modal-content-area">
+      <div *ngIf="formError" class="alert-error"><span class="material-icons">error</span> {{ formError }}</div>
+
+      <div class="form-field-full">
+        <label>Ville de départ <span class="required">*</span></label>
+        <select class="form-select" [(ngModel)]="form.villeDepartId">
+          <option value="">— Sélectionner —</option>
+          <option *ngFor="let v of villes" [value]="v.id">{{ v.nomVille }}</option>
+        </select>
+      </div>
+      <div class="form-field-full">
+        <label>Ville d'arrivée <span class="required">*</span></label>
+        <select class="form-select" [(ngModel)]="form.villeArriveeId">
+          <option value="">— Sélectionner —</option>
+          <option *ngFor="let v of villes" [value]="v.id" [disabled]="v.id === form.villeDepartId">{{ v.nomVille }}</option>
+        </select>
+      </div>
+      <div class="form-field-full">
+        <label>Tranche de poids <span class="required">*</span></label>
+        <select class="form-select" [(ngModel)]="form.tranchePoids">
+          <option *ngFor="let t of tranches" [value]="t">{{ getTrancheLabel(t) }}</option>
+        </select>
+      </div>
+      <div class="form-field-full">
+        <label>Tarif (FCFA) <span class="required">*</span></label>
+        <input type="number" min="1" class="form-control" [(ngModel)]="form.tarif" />
+      </div>
+    </div>
+
+    <div class="modal-actions">
+      <button class="btn-cancel" (click)="closeModal()" [disabled]="isSubmitting">Annuler</button>
+      <button class="btn-primary" (click)="submitForm()" [disabled]="isSubmitting">
+        <span *ngIf="isSubmitting" class="spinner-small"></span>
+        <span *ngIf="!isSubmitting" class="material-icons">save</span>
+        {{ isSubmitting ? 'Enregistrement...' : 'Enregistrer' }}
+      </button>
+    </div>
+  </div>
+</div>

@@ -26,6 +26,7 @@ export class TableauDeBord implements OnInit {
   agenceNom  = '';
   villeNom   = '';
   villeId:   string | null = null;
+  agenceId:  string | null = null;
   isAdmin    = false;
   today      = new Date();
 
@@ -71,6 +72,7 @@ export class TableauDeBord implements OnInit {
     this.agenceNom = this.currentUser.getAgenceNom() || '';
     this.villeNom  = this.currentUser.getVilleNom()  || '';
     this.villeId   = this.currentUser.getVilleId();
+    this.agenceId  = this.currentUser.getAgenceId();
     this.isAdmin   = this.currentUser.isGlobalView();
     this.chargerDonnees();
   }
@@ -111,7 +113,7 @@ export class TableauDeBord implements OnInit {
       const trajetIds = new Set(this.trajets.map(t => t.id));
       this.reservations = this.allReservations.filter(r => trajetIds.has(r.trajetId));
       this.colis = this.allColis.filter(c =>
-        c.villeDepartId === this.villeId || c.villeArriveeId === this.villeId
+        c.agenceDepartId === this.agenceId || c.agenceArriveeId === this.agenceId
       );
     }
   }
@@ -149,10 +151,11 @@ export class TableauDeBord implements OnInit {
 
     // Colis
     this.colisEnAttente = this.colis.filter(c =>
-      c.statut === StatutColis.EN_ATTENTE_COLLECTE || c.statut === StatutColis.PRIS_EN_CHARGE
+      c.statut === StatutColis.EN_ATTENTE_DEPOT || c.statut === StatutColis.DEPOSE_EN_AGENCE
     ).length;
     this.colisEnTransit = this.colis.filter(c =>
-      c.statut === StatutColis.COLLECTE_EFFECTUEE || c.statut === StatutColis.EN_COURS
+      c.statut === StatutColis.EN_TRANSIT || c.statut === StatutColis.ARRIVE_EN_AGENCE ||
+      c.statut === StatutColis.EN_COURS_LIVRAISON
     ).length;
     this.colisLivres = this.colis.filter(c => c.statut === StatutColis.LIVRE).length;
   }
@@ -191,18 +194,20 @@ export class TableauDeBord implements OnInit {
 
   getStatutColisClass(s: StatutColis): string {
     const m: Record<string, string> = {
-      EN_ATTENTE_COLLECTE: 'st-attente', PRIS_EN_CHARGE: 'st-charge',
-      COLLECTE_EFFECTUEE: 'st-collecte', EN_COURS: 'st-transit',
-      LIVRE: 'st-livre', ANNULE: 'st-annule'
+      EN_ATTENTE_DEPOT: 'st-attente', DEPOSE_EN_AGENCE: 'st-charge',
+      EN_TRANSIT: 'st-transit', ARRIVE_EN_AGENCE: 'st-collecte',
+      EN_COURS_LIVRAISON: 'st-transit', LIVRE: 'st-livre',
+      RETOURNE: 'st-annule', PERDU: 'st-annule', ANNULE: 'st-annule'
     };
     return m[s] || '';
   }
 
   getStatutColisLabel(s: StatutColis): string {
     const m: Record<string, string> = {
-      EN_ATTENTE_COLLECTE: 'En attente', PRIS_EN_CHARGE: 'Pris en charge',
-      COLLECTE_EFFECTUEE: 'Collecté', EN_COURS: 'En transit',
-      LIVRE: 'Livré', ANNULE: 'Annulé'
+      EN_ATTENTE_DEPOT: 'En attente de dépôt', DEPOSE_EN_AGENCE: 'Déposé en agence',
+      EN_TRANSIT: 'En transit', ARRIVE_EN_AGENCE: 'Arrivé en agence',
+      EN_COURS_LIVRAISON: 'En livraison', LIVRE: 'Livré',
+      RETOURNE: 'Retourné', PERDU: 'Perdu', ANNULE: 'Annulé'
     };
     return m[s] || s;
   }
