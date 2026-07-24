@@ -4,9 +4,9 @@ import { FormsModule } from '@angular/forms';
 import { Sidebar } from '../../shared/composants/sidebar/sidebar';
 import { Header } from '../../shared/composants/header/header';
 import { Tournee, TourneeRequest } from '../../shared/models/tournee.model';
-import { Colis, StatutColis } from '../../shared/models/colis.model';
+import { DemandeCollecte, StatutCollecte } from '../../shared/models/demande-collecte.model';
 import { TourneeService } from '../../core/services/tournee.service';
-import { ColisService } from '../../core/services/colis.service';
+import { DemandeCollecteService } from '../../core/services/demande-collecte.service';
 import { LivreurService } from '../../core/services/livreur.service';
 import { UserResponse } from '../../shared/models/users';
 
@@ -29,12 +29,11 @@ enum ModalMode {
   styleUrl: './tournees.scss',
 })
 export class TourneesComponent implements OnInit {
-  // Make enum accessible in template
   readonly ModalMode = ModalMode;
 
   tournees: Tournee[] = [];
   filteredTournees: Tournee[] = [];
-  availableColis: Colis[] = [];
+  availableDemandes: DemandeCollecte[] = [];
   livreurs: UserResponse[] = [];
 
   // Pagination
@@ -59,17 +58,17 @@ export class TourneesComponent implements OnInit {
   editingId: string | null = null;
 
   form: TourneeRequest = this.emptyForm();
-  selectedColisIds: string[] = [];
+  selectedDemandeIds: string[] = [];
 
   constructor(
     private tourneeService: TourneeService,
-    private colisService: ColisService,
+    private demandeService: DemandeCollecteService,
     private livreurService: LivreurService
   ) {}
 
   ngOnInit(): void {
     this.loadTournees();
-    this.loadAvailableColis();
+    this.loadAvailableDemandes();
     this.loadLivreurs();
   }
 
@@ -78,7 +77,7 @@ export class TourneesComponent implements OnInit {
       dateTournee: '',
       livreurId: '',
       zone: '',
-      colisIds: []
+      demandeIds: []
     };
   }
 
@@ -99,13 +98,13 @@ export class TourneesComponent implements OnInit {
     });
   }
 
-  loadAvailableColis(): void {
-    this.colisService.getAll({ statut: StatutColis.PRIS_EN_CHARGE }).subscribe({
+  loadAvailableDemandes(): void {
+    this.demandeService.getAll().subscribe({
       next: (data) => {
-        this.availableColis = data.filter(colis => !colis.tourneeId);
+        this.availableDemandes = data.filter(d => !d.tourneeId && d.statut !== StatutCollecte.ANNULE);
       },
       error: (err) => {
-        console.error('Erreur lors du chargement des colis disponibles', err);
+        console.error('Erreur lors du chargement des demandes de collecte', err);
       }
     });
   }
@@ -123,10 +122,10 @@ export class TourneesComponent implements OnInit {
 
   applyFilters(): void {
     this.filteredTournees = this.tournees.filter(tournee => {
-      const matchesSearch = !this.searchTerm || 
+      const matchesSearch = !this.searchTerm ||
         tournee.zone?.toLowerCase().includes(this.searchTerm.toLowerCase()) ||
         tournee.livreur?.fullName?.toLowerCase().includes(this.searchTerm.toLowerCase());
-      
+
       const matchesDate = !this.selectedDate || tournee.dateTournee === this.selectedDate;
       const matchesLivreur = !this.selectedLivreur || tournee.livreurId === this.selectedLivreur;
 
@@ -157,7 +156,7 @@ export class TourneesComponent implements OnInit {
     this.formError = '';
     this.formSuccess = '';
     this.formErrors = {};
-    this.selectedColisIds = [];
+    this.selectedDemandeIds = [];
 
     if (mode === ModalMode.MODIFICATION && tournee) {
       this.editingId = tournee.id || null;
@@ -165,9 +164,17 @@ export class TourneesComponent implements OnInit {
         dateTournee: tournee.dateTournee,
         livreurId: tournee.livreurId || '',
         zone: tournee.zone || '',
-        colisIds: tournee.colis?.map(c => c.id!) || []
+        demandeIds: tournee.demandesCollecte?.map(d => d.id!) || []
       };
-      this.selectedColisIds = this.form.colisIds || [];
+      this.selectedDemandeIds = this.form.demandeIds || [];
+    } else if (mode === ModalMode.VISUALISATION && tournee) {
+      this.editingId = tournee.id || null;
+      this.form = {
+        dateTournee: tournee.dateTournee,
+        livreurId: tournee.livreurId || '',
+        zone: tournee.zone || '',
+        demandeIds: []
+      };
     } else {
       this.editingId = null;
       this.form = this.emptyForm();
@@ -178,7 +185,7 @@ export class TourneesComponent implements OnInit {
     this.isModalOpen = false;
     this.form = this.emptyForm();
     this.editingId = null;
-    this.selectedColisIds = [];
+    this.selectedDemandeIds = [];
   }
 
   validateForm(): boolean {
@@ -199,7 +206,7 @@ export class TourneesComponent implements OnInit {
       return;
     }
 
-    this.form.colisIds = this.selectedColisIds;
+    this.form.demandeIds = this.selectedDemandeIds;
     this.isSubmitting = true;
     this.formError = '';
 
@@ -209,7 +216,7 @@ export class TourneesComponent implements OnInit {
           this.formSuccess = 'Tournée créée avec succès';
           this.isSubmitting = false;
           this.loadTournees();
-          this.loadAvailableColis();
+          this.loadAvailableDemandes();
           setTimeout(() => this.closeModal(), 1500);
         },
         error: (err) => {
@@ -240,7 +247,7 @@ export class TourneesComponent implements OnInit {
       this.tourneeService.delete(tourneeId).subscribe({
         next: () => {
           this.loadTournees();
-          this.loadAvailableColis();
+          this.loadAvailableDemandes();
         },
         error: (err) => {
           console.error('Erreur lors de la suppression', err);
@@ -249,29 +256,29 @@ export class TourneesComponent implements OnInit {
     }
   }
 
-  removeColisFromTournee(tourneeId: string, colisId: string): void {
-    this.tourneeService.removeColisFromTournee(tourneeId, colisId).subscribe({
+  removeDemandeFromTournee(tourneeId: string, demandeId: string): void {
+    this.tourneeService.removeDemandeFromTournee(tourneeId, demandeId).subscribe({
       next: () => {
         this.loadTournees();
-        this.loadAvailableColis();
+        this.loadAvailableDemandes();
       },
       error: (err) => {
-        console.error('Erreur lors du retrait du colis', err);
+        console.error('Erreur lors du retrait de la demande', err);
       }
     });
   }
 
-  toggleColisSelection(colisId: string): void {
-    const index = this.selectedColisIds.indexOf(colisId);
+  toggleDemandeSelection(demandeId: string): void {
+    const index = this.selectedDemandeIds.indexOf(demandeId);
     if (index > -1) {
-      this.selectedColisIds.splice(index, 1);
+      this.selectedDemandeIds.splice(index, 1);
     } else {
-      this.selectedColisIds.push(colisId);
+      this.selectedDemandeIds.push(demandeId);
     }
   }
 
-  isColisSelected(colisId: string): boolean {
-    return this.selectedColisIds.includes(colisId);
+  isDemandeSelected(demandeId: string): boolean {
+    return this.selectedDemandeIds.includes(demandeId);
   }
 
   getStatutClass(statut: string): string {
@@ -294,7 +301,7 @@ export class TourneesComponent implements OnInit {
   }
 
   getLivreurName(livreurId: string): string {
-    const livreur = this.livreurs.find(l => String(l.id) === livreurId);
+    const livreur = this.livreurs.find(l => String(l.publicId) === livreurId);
     return livreur?.fullName || '';
   }
 
@@ -303,13 +310,13 @@ export class TourneesComponent implements OnInit {
     return tournee?.statut || '-';
   }
 
-  getTourneeColis(tourneeId: string): any[] {
+  getTourneeDemandes(tourneeId: string): DemandeCollecte[] {
     const tournee = this.tournees.find(t => t.id === tourneeId);
-    return tournee?.colis || [];
+    return tournee?.demandesCollecte || [];
   }
 
-  hasTourneeColis(tourneeId: string): boolean {
+  hasTourneeDemandes(tourneeId: string): boolean {
     const tournee = this.tournees.find(t => t.id === tourneeId);
-    return (tournee?.colis?.length || 0) > 0;
+    return (tournee?.demandesCollecte?.length || 0) > 0;
   }
 }

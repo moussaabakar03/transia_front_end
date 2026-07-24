@@ -723,6 +723,47 @@ label {
   letter-spacing: 0.5px;
 }
 
+.checkbox-inline {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  text-transform: none;
+  font-weight: 600;
+  color: #334155;
+  font-size: 13px;
+  cursor: pointer;
+
+  input[type="checkbox"] { width: 16px; height: 16px; cursor: pointer; }
+}
+
+.estimation-box {
+  background: linear-gradient(135deg, #eff6ff, #f0fdf4);
+  border: 1px solid #dbeafe;
+  border-radius: 14px;
+  padding: 14px 18px;
+  margin-top: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.estimation-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 13px;
+  color: #475569;
+  font-weight: 600;
+
+  &.total {
+    border-top: 1px dashed #bfdbfe;
+    padding-top: 8px;
+    margin-top: 2px;
+    font-size: 15px;
+    font-weight: 800;
+    color: #1e293b;
+  }
+}
+
 .field-error-msg {
   display: flex;
   align-items: center;

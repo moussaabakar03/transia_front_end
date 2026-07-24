@@ -234,7 +234,7 @@
                   <th>N° Suivi</th>
                   <th>Destinataire</th>
                   <th>Trajet</th>
-                  <th>Poids</th>
+                  <th>Tranche</th>
                   <th>Statut</th>
                 </tr>
               </thead>
@@ -242,11 +242,11 @@
                 @for (c of colisRecents; track c.id) {
                   <tr>
                     <td><span class="tracking-chip">{{ c.numeroSuivi || '—' }}</span></td>
-                    <td class="fw-medium">{{ c.nomDestinataire }}</td>
+                    <td class="fw-medium">{{ c.destinataireNom }}</td>
                     <td class="text-muted text-sm">
-                      {{ c.villeDepartNom || '?' }} → {{ c.villeArriveeNom || '?' }}
+                      {{ c.agenceDepartNom || '?' }} → {{ c.agenceArriveeNom || '?' }}
                     </td>
-                    <td class="text-muted">{{ c.poids }} kg</td>
+                    <td class="text-muted">{{ c.tranchePoids }}</td>
                     <td>
                       <span class="statut-badge {{ getStatutColisClass(c.statut) }}">
                         {{ getStatutColisLabel(c.statut) }}
