@@ -1,18 +1,34 @@
-<!--  SPLASH SCREEN  -->
+<!-- =========================================================
+     SPLASH SCREEN
+========================================================= -->
+
 @if (splashVisible) {
   <div class="splash-screen" [class.fading]="splashFading">
+
     <div class="splash-content">
+
+      <!-- Logo animé -->
       <div class="splash-logo-ring">
+
         <div class="splash-ring ring-1"></div>
         <div class="splash-ring ring-2"></div>
         <div class="splash-ring ring-3"></div>
+
         <div class="splash-logo-inner">
-          <span class="splash-logo-letter">V</span>
+          <img
+            src="images/logo-transia.jpg"
+            alt="Logo Transia"
+            class="splash-logo-img"
+          />
         </div>
+
       </div>
+
+      <!-- Nom TRANSIA -->
       <div class="splash-brand">
         <div class="splash-name">
           <span class="big-letter">T</span>
+          <span>R</span>
           <span>A</span>
           <span>N</span>
           <span>S</span>
@@ -20,114 +36,259 @@
           <span>A</span>
         </div>
       </div>
+
+      <!-- Barre de chargement -->
       <div class="splash-loader">
         <div class="splash-loader-bar"></div>
       </div>
+
     </div>
+
   </div>
 }
 
-<!--  PAGE DE CONNEXION  -->
+
+<!-- =========================================================
+     PAGE DE CONNEXION
+========================================================= -->
+
 @if (!splashVisible) {
+
   <div class="login-page">
 
-    <!-- Panneau gauche décoratif -->
+    <!-- =====================================================
+         PANNEAU GAUCHE
+    ====================================================== -->
+
     <div class="login-left">
+
       <div class="left-overlay"></div>
+
       <div class="left-content">
+
+        <!-- Logo + nom -->
         <div class="brand-mark">
-          <div class="brand-v">V</div>
+
+          <div class="brand-v">
+            <img
+              src="images/logo-transia.jpg"
+              alt="Logo Transia"
+              class="brand-logo-img"
+            />
+          </div>
+
           <div class="brand-text">
+
             <div class="brand-name">
               <span class="big-letter">T</span>
+              <span>R</span>
               <span>A</span>
               <span>N</span>
               <span>S</span>
               <span class="big-letter">I</span>
               <span>A</span>
             </div>
+
           </div>
+
         </div>
+
+
+        <!-- Slogan -->
         <div class="left-quote">
-          <p>"Plateforme intelligente de gestion du transport."</p>
+
+          <p>
+            "Plateforme intelligente de gestion du transport."
+          </p>
+
           <span class="quote-line"></span>
+
         </div>
+
+
+        <!-- Décoration -->
         <div class="left-decoration">
           <div class="deco-circle c1"></div>
           <div class="deco-circle c2"></div>
           <div class="deco-circle c3"></div>
         </div>
+
       </div>
+
     </div>
 
-    <!-- Panneau droit : formulaire -->
+
+    <!-- =====================================================
+         PANNEAU DROIT : FORMULAIRE
+    ====================================================== -->
+
     <div class="login-right">
+
       <div class="login-card">
 
+        <!-- En-tête -->
         <div class="card-top">
+
           <h1>Connexion</h1>
-          <p>Accédez à votre compte.</p>
+
+          <p>
+            Accédez à votre compte.
+          </p>
+
         </div>
 
+
+        <!-- Message erreur -->
         @if (erreur) {
+
           <div class="alert-error">
-            <span class="material-icons">error_outline</span>
-            {{ erreur }}
+
+            <span class="material-icons">
+              error_outline
+            </span>
+
+            <span>
+              {{ erreur }}
+            </span>
+
           </div>
+
         }
+
+
+        <!-- =================================================
+             FORMULAIRE
+        ================================================== -->
 
         <div class="form-fields">
 
+          <!-- Téléphone -->
           <div class="field-wrap">
-            <label>Numéro de téléphone</label>
+
+            <label for="telephone">
+              Numéro de téléphone
+            </label>
+
             <div class="input-box">
-              <span class="material-icons input-icon" style = "margin-right: -150px;">phone_outlined</span>
-              <input type="tel"
-                     [(ngModel)]="telephone"
-                     name="telephone"
-                     placeholder="Votre numéro de téléphone"
-                     (keyup.enter)="seConnecter()"
-                     autocomplete="tel" />
+
+              <span class="material-icons input-icon">
+                phone
+              </span>
+
+              <input
+                id="telephone"
+                type="tel"
+                [(ngModel)]="telephone"
+                name="telephone"
+                placeholder="Votre numéro de téléphone"
+                (keyup.enter)="seConnecter()"
+                autocomplete="tel"
+              />
+
             </div>
+
           </div>
 
+
+          <!-- Mot de passe -->
           <div class="field-wrap">
-            <label>Mot de passe</label>
+
+            <label for="password">
+              Mot de passe
+            </label>
+
             <div class="input-box">
-              <span class="material-icons input-icon">lock_outline</span>
-              <input [type]="passwordVisible ? 'text' : 'password'"
-                     [(ngModel)]="password"
-                     name="password"
-                     placeholder="Votre mot de passe"
-                     (keyup.enter)="seConnecter()"
-                     autocomplete="current-password" />
-              <button class="toggle-pw" type="button" (click)="togglePassword()">
-                <span class="material-icons">{{ passwordVisible ? 'visibility_off' : 'visibility' }}</span>
+
+              <span class="material-icons input-icon">
+                lock_outline
+              </span>
+
+              <input
+                id="password"
+                [type]="passwordVisible ? 'text' : 'password'"
+                [(ngModel)]="password"
+                name="password"
+                placeholder="Votre mot de passe"
+                (keyup.enter)="seConnecter()"
+                autocomplete="current-password"
+              />
+
+              <button
+                class="toggle-pw"
+                type="button"
+                (click)="togglePassword()"
+                aria-label="Afficher ou masquer le mot de passe"
+              >
+
+                <span class="material-icons">
+                  {{ passwordVisible ? 'visibility_off' : 'visibility' }}
+                </span>
+
               </button>
+
             </div>
+
           </div>
 
         </div>
 
-        <button class="btn-login"
-                (click)="seConnecter()"
-                [disabled]="isLoading">
+
+        <!-- =================================================
+             BOUTON CONNEXION
+        ================================================== -->
+
+        <button
+          class="btn-login"
+          type="button"
+          (click)="seConnecter()"
+          [disabled]="isLoading"
+        >
+
           @if (isLoading) {
-            <span class="material-icons spin">autorenew</span>
-            Connexion en cours...
+
+            <span class="material-icons spin">
+              autorenew
+            </span>
+
+            <span>
+              Connexion en cours...
+            </span>
+
           } @else {
-            <span>Se connecter</span>
-            <span class="material-icons">arrow_forward</span>
+
+            <span>
+              Se connecter
+            </span>
+
+            <span class="material-icons">
+              arrow_forward
+            </span>
+
           }
+
         </button>
 
-         <p class="login-footer">
-          &copy; {{ currentYear }} <strong>TransIa</strong> · Gestion intelligente du transport<br>
-          <small>Tous droits réservés</small>
+
+        <!-- =================================================
+             FOOTER
+        ================================================== -->
+
+        <p class="login-footer">
+
+          &copy; {{ currentYear }}
+          <strong>Transia</strong>
+          · Gestion intelligente du transport
+
+          <br />
+
+          <small>
+            Tous droits réservés
+          </small>
+
         </p>
 
-        
       </div>
+
     </div>
 
   </div>

@@ -1,3 +1,3 @@
 export const environment = {
-        baseUrl: 'http://localhost:8181/api/v1',
+  baseUrl: 'https://transia-back-end.onrender.com/api/v1',
 };
