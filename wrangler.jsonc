@@ -1,0 +1,9 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "transia-front-end",
+  "compatibility_date": "2026-08-09",
+  "assets": {
+    "directory": "./dist/valkens-collecte/browser",
+    "not_found_handling": "single-page-application"
+  }
+}
