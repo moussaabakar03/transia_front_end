@@ -6,7 +6,7 @@
 // import { Sidebar } from '../../shared/composants/sidebar/sidebar';
 // import { Header } from '../../shared/composants/header/header';
 
-// import { environment } from '../../../environments/environment.development';
+// import { environment } from '../../../environments/environment';
 
 // interface Reponse {
 //   field_id: string;
@@ -258,7 +258,7 @@ import { HttpClient } from '@angular/common/http';
 import { Sidebar } from '../../shared/composants/sidebar/sidebar';
 import { Header } from '../../shared/composants/header/header';
 
-import { environment } from '../../../environments/environment.development';
+import { environment } from '../../../environments/environment';
 import { SubmissionService } from '../../core/services/submission.service'; // ✅ Import du service mis à jour
 
 interface Reponse {
