@@ -78,6 +78,8 @@ export class Reservations implements OnInit {
   isLoading    = true;
   errorMessage = '';
   searchTerm   = '';
+  statutFilter: string = 'TOUS';
+  triOrdre: 'DESC' | 'ASC' = 'DESC';
 
   // ── Modal réservation ────────────────────────────────
   isModalOpen  = false;
@@ -150,17 +152,46 @@ export class Reservations implements OnInit {
     });
   }
 
+  getReservationTimestamp(r: Reservation): number {
+    if (!r.dateReservation) return 0;
+    const time = new Date(r.dateReservation).getTime();
+    return isNaN(time) ? 0 : time;
+  }
+
   applyFilter(): void {
-    const term = this.searchTerm.toLowerCase();
+    const term = this.searchTerm.trim().toLowerCase();
+    
     this.filteredReservations = this.reservations.filter(r => {
+      // 1. Filtrage par statut
+      if (this.statutFilter !== 'TOUS' && r.statut !== this.statutFilter) {
+        return false;
+      }
+
+      // 2. Filtrage par mot-clé (ville départ/arrivée, nom responsable, id)
+      if (!term) return true;
       const trajet = this.getTrajet(r.trajetId);
-      return !term ||
+      return (
         trajet?.villeDepart?.nomVille?.toLowerCase().includes(term) ||
         trajet?.villeArrivee?.nomVille?.toLowerCase().includes(term) ||
-        r.nomResponsable?.toLowerCase().includes(term);
+        r.nomResponsable?.toLowerCase().includes(term) ||
+        (r.id && r.id.toLowerCase().includes(term))
+      );
     });
+
+    // 3. Tri par date et heure de réservation (ordre configurable, DESC par défaut)
+    this.filteredReservations.sort((a, b) => {
+      const timeA = this.getReservationTimestamp(a);
+      const timeB = this.getReservationTimestamp(b);
+      return this.triOrdre === 'DESC' ? timeB - timeA : timeA - timeB;
+    });
+
     this.currentPage = 1;
     this.updatePagination();
+  }
+
+  toggleTriDate(): void {
+    this.triOrdre = this.triOrdre === 'DESC' ? 'ASC' : 'DESC';
+    this.applyFilter();
   }
 
   updatePagination(): void {

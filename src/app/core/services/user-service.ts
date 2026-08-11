@@ -28,7 +28,7 @@ export class UserService {
     return this.http.get<UserResponse>(`${this.baseUrl}/users/${id}`);
   }
 
-  // PUT /users/{publicId} (UUID, pas l'id numérique)
+  // PUT /users/{publicId} (UUID)
   updateUser(publicId: string, userData: UserUpdateDTO): Observable<UserResponse> {
     return this.http.put<UserResponse>(`${this.baseUrl}/users/${publicId}`, userData);
   }

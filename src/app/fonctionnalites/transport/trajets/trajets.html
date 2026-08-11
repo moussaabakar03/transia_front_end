@@ -19,15 +19,43 @@
         }
       </div>
 
-      <!-- Barre de Recherche -->
+      <!-- Barre de Recherche & Filtres -->
       <div class="search-bar">
-        <span class="material-icons">search</span>
-        <input
-          type="text"
-          placeholder="Rechercher par ville de départ, d'arrivée ou immatriculation..."
-          [(ngModel)]="valeurSaisi"
-          (input)="filtrerTrajets()"
-        />
+        <div class="search-input-wrapper">
+          <span class="material-icons">search</span>
+          <input
+            type="text"
+            placeholder="Rechercher par ville, agence, immatriculation, chauffeur..."
+            [(ngModel)]="valeurSaisi"
+            (input)="filtrerTrajets()"
+          />
+        </div>
+
+        <div class="filter-controls">
+          <!-- Filtre par statut -->
+          <div class="statut-filter-wrapper">
+            <span class="material-icons filter-icon">filter_list</span>
+            <select [(ngModel)]="statutFilter" (change)="filtrerTrajets()" class="statut-select-filter">
+              <option value="TOUS">Tous les statuts</option>
+              <option [value]="StatutTrajet.PROGRAMME">Programmé</option>
+              <option [value]="StatutTrajet.EN_COURS">En cours</option>
+              <option [value]="StatutTrajet.TERMINE">Terminé</option>
+              <option [value]="StatutTrajet.ANNULE">Annulé</option>
+              <option [value]="StatutTrajet.EXPIRE">Expiré</option>
+            </select>
+          </div>
+
+          <!-- Bouton d'ordre de tri par date et heure de départ -->
+          <button class="btn-sort-toggle" (click)="toggleTriDate()" [title]="triOrdre === 'DESC' ? 'Trajets récents en premier' : 'Trajets anciens en premier'">
+            <span class="material-icons">sort</span>
+            <span>{{ triOrdre === 'DESC' ? 'Plus récents' : 'Plus anciens' }}</span>
+          </button>
+
+          <span class="count-badge">{{ resultatsFiltres.length }} trajet(s)</span>
+          <button class="btn-refresh" (click)="loadTrajets()" title="Actualiser">
+            <span class="material-icons">refresh</span>
+          </button>
+        </div>
       </div>
 
       <!-- Tableau des Trajets -->
@@ -55,13 +83,23 @@
                 <td>
                   <div class="ville-cell">
                     <span class="material-icons location-icon">location_on</span>
-                    <span>{{ trajet.villeDepart.nomVille }}</span>
+                    <div>
+                      <div><strong>{{ trajet.villeDepart.nomVille }}</strong></div>
+                      @if (trajet.agenceDepartNom || trajet.agenceNom) {
+                        <small style="font-size: 11px; color: #6b7280; display: block;">{{ trajet.agenceDepartNom || trajet.agenceNom }}</small>
+                      }
+                    </div>
                   </div>
                 </td>
                 <td>
                   <div class="ville-cell">
                     <span class="material-icons location-icon">place</span>
-                    <span>{{ trajet.villeArrivee.nomVille }}</span>
+                    <div>
+                      <div><strong>{{ trajet.villeArrivee.nomVille }}</strong></div>
+                      @if (trajet.agenceArriveeNom) {
+                        <small style="font-size: 11px; color: #6b7280; display: block;">{{ trajet.agenceArriveeNom }}</small>
+                      }
+                    </div>
                   </div>
                 </td>
                 <td>
@@ -106,28 +144,27 @@
       </div>
 
       <!-- Pagination -->
-      <div class="pagination-container">
+      <div class="pagination-container" *ngIf="totalTrajets > 0">
         <span class="pagination-info">
           Affichage de {{ trajetsAffiches.length }} sur {{ totalTrajets }} trajet(s)
         </span>
         <div class="pagination-buttons">
-          <button class="btn-pag" [disabled]="pageActuelle === 1" (click)="pagePrecedente()">
+          <button class="btn-pag" [disabled]="pageActuelle === 1" (click)="pagePrecedente()" title="Page précédente">
             <span class="material-icons">chevron_left</span>
           </button>
-          @for (p of [].constructor(totalPages); track $index) {
+          @for (p of getPaginationPages(); track p) {
             <button 
               class="btn-pag" 
-              [class.active]="pageActuelle === $index + 1"
-              (click)="changerPage($index + 1)">
-              {{ $index + 1 }}
+              [class.active]="pageActuelle === p"
+              (click)="changerPage(p)">
+              {{ p }}
             </button>
           }
-          <button class="btn-pag" [disabled]="pageActuelle === totalPages" (click)="pageSuivante()">
+          <button class="btn-pag" [disabled]="pageActuelle === totalPages" (click)="pageSuivante()" title="Page suivante">
             <span class="material-icons">chevron_right</span>
           </button>
         </div>
       </div>
-
     </div>
   </div>
 </div>
@@ -136,7 +173,7 @@
 <div class="custom-modal-backdrop" *ngIf="afficherCreationTrajet">
   <div class="custom-modal-box">
     <div class="modal-header">
-      <h2>Ajouter un nouveau trajet</h2>
+      <h2>Créer un nouveau trajet</h2>
       <button class="close-icon-btn" (click)="afficherCreationTrajet = false">
         <span class="material-icons">close</span>
       </button>
@@ -144,9 +181,9 @@
     <div class="modal-body">
       <div class="form-group">
         <label>Ville de départ</label>
-        @if (!isAdmin && agentVilleNom) {
-          <div class="ville-fixe-display">
-            <span class="material-icons">location_on</span>
+        @if (!isAdmin && agentVilleId) {
+          <div class="ville-fixe-info">
+            <span class="material-icons">location_city</span>
             <span>{{ agentVilleNom }}</span>
             <span class="ville-fixe-badge">Votre agence</span>
           </div>
@@ -160,6 +197,15 @@
         }
       </div>
       <div class="form-group">
+        <label>Agence de départ</label>
+        <select [(ngModel)]="nouveauTrajet.agenceDepartId" class="form-select">
+          <option value="">Sélectionner une agence de départ (optionnel)</option>
+          @for (agence of getAgencesPourVille(nouveauTrajet.villeDepartId); track agence.id) {
+            <option [value]="agence.id">{{ agence.nom }} ({{ agence.villeNom }})</option>
+          }
+        </select>
+      </div>
+      <div class="form-group">
         <label>Ville d'arrivée</label>
         <select [(ngModel)]="nouveauTrajet.villeArriveeId" class="form-select">
           <option value="">Sélectionner une ville</option>
@@ -171,23 +217,31 @@
         </select>
       </div>
       <div class="form-group">
+        <label>Agence d'arrivée (Terminus)</label>
+        <select [(ngModel)]="nouveauTrajet.agenceArriveeId" class="form-select">
+          <option value="">Sélectionner une agence d'arrivée (optionnel)</option>
+          @for (agence of getAgencesPourVille(nouveauTrajet.villeArriveeId); track agence.id) {
+            <option [value]="agence.id">{{ agence.nom }} ({{ agence.villeNom }})</option>
+          }
+        </select>
+      </div>
+      <div class="form-group">
         <label>Véhicule</label>
         <select [(ngModel)]="nouveauTrajet.vehiculeId" class="form-select">
           <option value="">Sélectionner un véhicule</option>
-          @for (vehicule of vehicules; track vehicule.id) {
-            <option [value]="vehicule.id">{{ vehicule.marque }} {{ vehicule.modele }} ({{ vehicule.immatriculation }})</option>
+          @for (vehicule of getVehiculesDisponiblesEtTries(); track vehicule.id) {
+            <option [value]="vehicule.id">{{ getVehiculeOptionLabel(vehicule) }}</option>
           }
         </select>
       </div>
       <div class="form-group">
         <label>Chauffeur</label>
         <select [(ngModel)]="nouveauTrajet.chauffeurId" class="form-select">
-          <option value="">Sélectionner un chauffeur</option>
-          @for (chauffeur of chauffeurs; track chauffeur.publicId) {
-            <option [value]="chauffeur.publicId">{{ chauffeur.fullName || chauffeur.telephone }}</option>
+          <option value="">Sélectionner un chauffeur (optionnel)</option>
+          @for (chauffeur of getChauffeursTries(); track (chauffeur.publicId || chauffeur.id)) {
+            <option [value]="chauffeur.publicId || chauffeur.id">{{ getChauffeurOptionLabel(chauffeur) }}</option>
           }
         </select>
-        <span class="field-hint">Chauffeurs actifs de la ville de départ sélectionnée. La disponibilité à la date/heure exacte est vérifiée à l'enregistrement.</span>
       </div>
       <div class="form-group">
         <label>Distance (km)</label>
@@ -203,7 +257,7 @@
       </div>
       <div class="form-group">
         <label>Date de départ</label>
-        <input type="date" [(ngModel)]="nouveauTrajet.dateDepart">
+        <input type="date" [min]="dateAujourdhui" [(ngModel)]="nouveauTrajet.dateDepart">
       </div>
       <div class="form-group">
         <label>Heure de départ</label>
@@ -247,6 +301,15 @@
         </select>
       </div>
       <div class="form-group">
+        <label>Agence de départ</label>
+        <select [(ngModel)]="trajetEditer.agenceDepartId" class="form-select">
+          <option value="">Sélectionner une agence de départ (optionnel)</option>
+          @for (agence of getAgencesPourVille(trajetEditer.villeDepart?.id); track agence.id) {
+            <option [value]="agence.id">{{ agence.nom }} ({{ agence.villeNom }})</option>
+          }
+        </select>
+      </div>
+      <div class="form-group">
         <label>Ville d'arrivée</label>
         <select [(ngModel)]="trajetEditer.villeArrivee.id" class="form-select">
           <option value="">Sélectionner une ville</option>
@@ -256,20 +319,29 @@
         </select>
       </div>
       <div class="form-group">
+        <label>Agence d'arrivée (Terminus)</label>
+        <select [(ngModel)]="trajetEditer.agenceArriveeId" class="form-select">
+          <option value="">Sélectionner une agence d'arrivée (optionnel)</option>
+          @for (agence of getAgencesPourVille(trajetEditer.villeArrivee?.id); track agence.id) {
+            <option [value]="agence.id">{{ agence.nom }} ({{ agence.villeNom }})</option>
+          }
+        </select>
+      </div>
+      <div class="form-group">
         <label>Véhicule</label>
         <select [(ngModel)]="trajetEditer.vehicule.id" class="form-select">
           <option value="">Sélectionner un véhicule</option>
-          @for (vehicule of vehicules; track vehicule.id) {
-            <option [value]="vehicule.id">{{ vehicule.marque }} {{ vehicule.modele }} ({{ vehicule.immatriculation }})</option>
+          @for (vehicule of getVehiculesDisponiblesEtTries(trajetEditer.id); track vehicule.id) {
+            <option [value]="vehicule.id">{{ getVehiculeOptionLabel(vehicule, trajetEditer.id) }}</option>
           }
         </select>
       </div>
       <div class="form-group">
         <label>Chauffeur</label>
         <select [(ngModel)]="trajetEditer.chauffeurId" class="form-select">
-          <option value="">Sélectionner un chauffeur</option>
-          @for (chauffeur of chauffeurs; track chauffeur.publicId) {
-            <option [value]="chauffeur.publicId">{{ chauffeur.fullName || chauffeur.telephone }}</option>
+          <option value="">Sélectionner un chauffeur (optionnel)</option>
+          @for (chauffeur of getChauffeursTries(trajetEditer.id); track (chauffeur.publicId || chauffeur.id)) {
+            <option [value]="chauffeur.publicId || chauffeur.id">{{ getChauffeurOptionLabel(chauffeur, trajetEditer.id) }}</option>
           }
         </select>
       </div>
@@ -300,6 +372,7 @@
           <option [value]="StatutTrajet.EN_COURS">En Cours</option>
           <option [value]="StatutTrajet.TERMINE">Terminé</option>
           <option [value]="StatutTrajet.ANNULE">Annulé</option>
+          <option [value]="StatutTrajet.EXPIRE">Expiré</option>
         </select>
       </div>
     </div>
@@ -326,11 +399,13 @@
         <div class="itineraire-ville">
           <span class="material-icons location-icon">location_on</span>
           <span>{{ trajetVoir.villeDepart.nomVille }}</span>
+          <small *ngIf="trajetVoir.agenceDepartNom || trajetVoir.agenceNom" style="display:block; font-size:12px; color:#4b5563;">({{ trajetVoir.agenceDepartNom || trajetVoir.agenceNom }})</small>
         </div>
         <span class="material-icons itineraire-arrow">arrow_forward</span>
         <div class="itineraire-ville">
           <span class="material-icons location-icon">place</span>
           <span>{{ trajetVoir.villeArrivee.nomVille }}</span>
+          <small *ngIf="trajetVoir.agenceArriveeNom" style="display:block; font-size:12px; color:#4b5563;">({{ trajetVoir.agenceArriveeNom }})</small>
         </div>
       </div>
       <div class="detail-grid">
@@ -349,8 +424,12 @@
           <span class="detail-value">{{ trajetVoir.chauffeurNom || '—' }}</span>
         </div>
         <div class="detail-item">
-          <span class="detail-label">Agence</span>
-          <span class="detail-value">{{ trajetVoir.agenceNom || '—' }}</span>
+          <span class="detail-label">Agence de départ</span>
+          <span class="detail-value">{{ trajetVoir.agenceDepartNom || trajetVoir.agenceNom || '—' }}</span>
+        </div>
+        <div class="detail-item">
+          <span class="detail-label">Agence d'arrivée</span>
+          <span class="detail-value">{{ trajetVoir.agenceArriveeNom || '—' }}</span>
         </div>
         <div class="detail-item">
           <span class="detail-label">Date de départ</span>
