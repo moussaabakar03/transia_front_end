@@ -17,19 +17,42 @@
         </button>
       </div>
 
-      <!-- Barre de Recherche -->
+      <!-- Barre de Recherche & Filtres -->
       <div class="search-bar">
-        <span class="material-icons">search</span>
-        <input
-          type="text"
-          placeholder="Rechercher par ville, passager, responsable..."
-          [(ngModel)]="searchTerm"
-          (input)="applyFilter()"
-        />
-        <span class="count-badge" style="width: 100px;">{{ filteredReservations.length }} résultat(s)</span>
-        <button class="btn-refresh" (click)="loadData()" title="Actualiser">
-          <span class="material-icons">refresh</span>
-        </button>
+        <div class="search-input-wrapper">
+          <span class="material-icons">search</span>
+          <input
+            type="text"
+            placeholder="Rechercher par ville, passager, responsable..."
+            [(ngModel)]="searchTerm"
+            (input)="applyFilter()"
+          />
+        </div>
+
+        <div class="filter-controls">
+          <!-- Filtre par statut -->
+          <div class="statut-filter-wrapper">
+            <span class="material-icons filter-icon">filter_list</span>
+            <select [(ngModel)]="statutFilter" (change)="applyFilter()" class="statut-select-filter">
+              <option value="TOUS">Tous les statuts</option>
+              <option value="EN_ATTENTE">En attente</option>
+              <option value="CONFIRMEE">Confirmée</option>
+              <option value="ANNULEE">Annulée</option>
+              <option value="EXPIREE">Expirée</option>
+            </select>
+          </div>
+
+          <!-- Bouton d'ordre de tri par date et heure de réservation -->
+          <button class="btn-sort-toggle" (click)="toggleTriDate()" [title]="triOrdre === 'DESC' ? 'Réservations récentes en premier' : 'Réservations anciennes en premier'">
+            <span class="material-icons">sort</span>
+            <span>{{ triOrdre === 'DESC' ? 'Plus récentes' : 'Plus anciennes' }}</span>
+          </button>
+
+          <span class="count-badge">{{ filteredReservations.length }} résultat(s)</span>
+          <button class="btn-refresh" (click)="loadData()" title="Actualiser">
+            <span class="material-icons">refresh</span>
+          </button>
+        </div>
       </div>
 
       <!-- Chargement -->

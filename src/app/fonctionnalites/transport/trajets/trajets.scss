@@ -86,33 +86,131 @@ app-sidebar {
 }
 
 // =============================================
-// BARRE DE RECHERCHE
+// BARRE DE RECHERCHE & FILTRES
 // =============================================
 .search-bar {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   background-color: #ffffff;
   border: 1px solid #e2e8f0;
   border-radius: 16px;
-  padding: 12px 18px;
-  gap: 12px;
+  padding: 10px 18px;
+  gap: 16px;
   box-shadow: 0 2px 6px rgba(30, 41, 59, 0.01);
+  flex-wrap: wrap;
 
-  .material-icons {
-    color: #94a3b8;
+  .search-input-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex: 1;
+    min-width: 250px;
+
+    .material-icons {
+      color: #94a3b8;
+    }
+
+    input {
+      border: none;
+      outline: none;
+      width: 100%;
+      font-size: 14px;
+      color: #334155;
+      background: transparent;
+      height: 32px;
+
+      &::placeholder {
+        color: #94a3b8;
+      }
+    }
   }
 
-  input {
-    border: none;
-    outline: none;
-    width: 100%;
-    font-size: 14px;
-    color: #334155;
-    background: transparent;
-    height: 30px;
+  .filter-controls {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
 
-    &::placeholder {
-      color: #94a3b8;
+    .statut-filter-wrapper {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      background-color: #f8fafc;
+      border: 1px solid #cbd5e1;
+      border-radius: 12px;
+      padding: 4px 12px;
+      height: 38px;
+
+      .filter-icon {
+        font-size: 18px;
+        color: #64748b;
+      }
+
+      .statut-select-filter {
+        border: none;
+        background: transparent;
+        outline: none;
+        font-size: 13px;
+        font-weight: 600;
+        color: #1e293b;
+        cursor: pointer;
+      }
+    }
+
+    .btn-sort-toggle {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      background-color: #f1f5f9;
+      color: #334155;
+      border: 1px solid #cbd5e1;
+      border-radius: 12px;
+      padding: 6px 14px;
+      font-size: 12.5px;
+      font-weight: 700;
+      cursor: pointer;
+      height: 38px;
+      transition: all 0.2s ease;
+
+      .material-icons {
+        font-size: 18px;
+        color: #2563eb;
+      }
+
+      &:hover {
+        background-color: #e2e8f0;
+        color: #0f172a;
+      }
+    }
+
+    .count-badge {
+      font-size: 12px;
+      font-weight: 700;
+      color: #2563eb;
+      background-color: #eff6ff;
+      padding: 6px 12px;
+      border-radius: 10px;
+      border: 1px solid #dbeafe;
+      white-space: nowrap;
+    }
+
+    .btn-refresh {
+      background: none;
+      border: 1px solid #e2e8f0;
+      border-radius: 10px;
+      padding: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      color: #64748b;
+      transition: all 0.2s ease;
+
+      &:hover {
+        background-color: #f1f5f9;
+        color: #1e293b;
+      }
     }
   }
 }
@@ -224,6 +322,11 @@ app-sidebar {
     background-color: #fee2e2;
     color: #991b1b;
   }
+
+  &.statut-expire {
+    background-color: #e2e8f0;
+    color: #475569;
+  }
 }
 
 .actions-cell {
@@ -314,6 +417,10 @@ app-sidebar {
   justify-content: center;
   transition: all 0.15s ease;
 
+  .material-icons {
+    font-size: 18px;
+  }
+
   &:hover:not([disabled]) {
     background-color: #f1f5f9;
     color: #1e293b;
@@ -365,12 +472,14 @@ app-sidebar {
   background: #ffffff;
   border-radius: 24px;
   width: 100%;
-  max-width: 480px;
+  max-width: 540px;
+  box-sizing: border-box;
   box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
   overflow: hidden;
   animation: modalFadeIn 0.25s ease-out;
   max-height: 90vh;
   overflow-y: auto;
+  overflow-x: hidden;
 
   .modal-header {
     padding: 20px 24px;
@@ -409,6 +518,9 @@ app-sidebar {
     display: flex;
     flex-direction: column;
     gap: 16px;
+    box-sizing: border-box;
+    width: 100%;
+    overflow-x: hidden;
   }
 
   .modal-footer {
@@ -425,6 +537,8 @@ app-sidebar {
   display: flex;
   flex-direction: column;
   gap: 6px;
+  width: 100%;
+  box-sizing: border-box;
 
   label {
     font-size: 12px;
@@ -435,6 +549,9 @@ app-sidebar {
   }
 
   input, select.form-select {
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
     padding: 10px 14px;
     border-radius: 10px;
     border: 1px solid #cbd5e1;
@@ -443,9 +560,16 @@ app-sidebar {
     color: #1e293b;
     transition: border-color 0.15s ease;
     background-color: #ffffff;
+    text-overflow: ellipsis;
+    overflow: hidden;
 
     &:focus {
       border-color: #2563eb;
+    }
+
+    option {
+      font-size: 13px;
+      padding: 4px 8px;
     }
   }
 }
