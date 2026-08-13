@@ -9,7 +9,7 @@ import {
 } from '../../shared/models/colis.model';
 import { EstimationPrix } from '../../shared/models/tarif-expedition.model';
 import { Agence } from '../../shared/models/agence.model';
-import { Trajet } from '../../shared/models/trajet';
+import { Trajet, StatutTrajet } from '../../shared/models/trajet';
 import { UserResponse } from '../../shared/models/users';
 import { ColisService } from '../../core/services/colis.service';
 import { TarifExpeditionService } from '../../core/services/tarif-expedition.service';
@@ -49,7 +49,8 @@ enum ModalMode {
   VISUALISATION = 'visualisation',
   PESEE = 'pesee',
   CHARGER = 'charger',
-  LIVRAISON = 'livraison'
+  LIVRAISON = 'livraison',
+  REMISE = 'remise'
 }
 
 @Component({
@@ -245,10 +246,19 @@ export class ColisComponent implements OnInit {
     this.openModalCommon();
   }
 
+  remiseCodeOtp: string = '';
+
   openLivraison(c: Colis): void {
     this.modalMode = ModalMode.LIVRAISON;
     this.selectedColis = c;
     this.selectedLivreurId = c.livreurId || '';
+    this.openModalCommon();
+  }
+
+  openRemise(c: Colis): void {
+    this.modalMode = ModalMode.REMISE;
+    this.selectedColis = c;
+    this.remiseCodeOtp = '';
     this.openModalCommon();
   }
 
@@ -273,10 +283,22 @@ export class ColisComponent implements OnInit {
     if (!this.selectedColis) return [];
     const depart = this.agences.find(a => a.id === this.selectedColis!.agenceDepartId);
     const arrivee = this.agences.find(a => a.id === this.selectedColis!.agenceArriveeId);
-    if (!depart || !arrivee) return this.trajets;
-    return this.trajets.filter(t =>
-      t.villeDepart?.id === depart.villeId && t.villeArrivee?.id === arrivee.villeId
-    );
+
+    return this.trajets.filter(t => {
+      // Seuls les trajets programmés (ou statut équivalent)
+      const isProgramme = t.statut === StatutTrajet.PROGRAMME ||
+                          (t.statut as string) === 'PROGRAMME' ||
+                          (t.statut as string) === 'PROGRAMMEE' ||
+                          (t.statut as string) === 'EN_ATTENTE';
+      if (!isProgramme) return false;
+
+      // Filtrer selon la ligne départ -> arrivée
+      if (depart && arrivee) {
+        return (t.villeDepart?.id === depart.villeId || t.agenceDepartId === depart.id) &&
+               (t.villeArrivee?.id === arrivee.villeId || t.agenceArriveeId === arrivee.id);
+      }
+      return true;
+    });
   }
 
   // ── Validation / soumission création ──────────────────────
@@ -366,6 +388,27 @@ export class ColisComponent implements OnInit {
     this.colisService.demarrerLivraison(this.selectedColis.id, this.selectedLivreurId).subscribe({
       next: (u) => { this.isSubmitting = false; this.replaceInList(u); this.closeModal(); },
       error: (err) => { this.isSubmitting = false; this.formError = err.error?.message || 'Erreur lors de l\'assignation.'; }
+    });
+  }
+
+  submitRemise(): void {
+    if (!this.selectedColis?.id) return;
+    if (!this.remiseCodeOtp || this.remiseCodeOtp.trim().length !== 6) {
+      this.formError = 'Le code secret OTP de retrait doit comporter exactement 6 chiffres.';
+      return;
+    }
+    this.isSubmitting = true;
+    this.formError = '';
+    this.colisService.confirmerLivraison(this.selectedColis.id, this.remiseCodeOtp.trim()).subscribe({
+      next: (u) => {
+        this.isSubmitting = false;
+        this.replaceInList(u);
+        this.closeModal();
+      },
+      error: (err) => {
+        this.isSubmitting = false;
+        this.formError = err.error?.message || 'Code secret OTP invalide.';
+      }
     });
   }
 
@@ -460,7 +503,80 @@ export class ColisComponent implements OnInit {
   canCancel(c: Colis): boolean { return c.statut !== StatutColis.LIVRE && c.statut !== StatutColis.ANNULE; }
 
   getQrUrl(data: string): string {
-    return 'https://api.qrserver.com/v1/create-qr-code/?size=140x140&data=' + encodeURIComponent(data);
+    if (!data) return '';
+    const targetUrl = data.startsWith('http') ? data : `http://localhost:4200/suivi/${data}`;
+    return 'https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=' + encodeURIComponent(targetUrl);
+  }
+
+  envoyerWhatsApp(telephone: string, message: string): void {
+    if (!telephone) return;
+    let numClean = telephone.replace(/\D/g, '');
+    if (!numClean.startsWith('228') && numClean.length === 8) {
+      numClean = '228' + numClean;
+    }
+    const url = `https://wa.me/${numClean}?text=${encodeURIComponent(message)}`;
+    window.open(url, '_blank');
+  }
+
+  envoyerWhatsAppDestinataire(c: Colis | null): void {
+    if (!c) return;
+    const lien = c.lienSuivi || ('http://localhost:4200/suivi/' + c.numeroSuivi);
+    const msg = `Bonjour ${c.destinataireNom},\nUn colis vous est destiné (Réf: ${c.numeroSuivi}).\nCode secret de retrait : ${c.codeRetrait || 'N/A'}.\nSuivez l'état en direct : ${lien}`;
+    this.envoyerWhatsApp(c.destinataireTelephone, msg);
+  }
+
+  envoyerWhatsAppExpediteur(c: Colis | null): void {
+    if (!c) return;
+    const lien = c.lienSuivi || ('http://localhost:4200/suivi/' + c.numeroSuivi);
+    const msg = `Bonjour ${c.expediteurNom},\nVotre colis (Réf: ${c.numeroSuivi}) a bien été pris en charge par TransIA.\nSuivez son état en direct : ${lien}`;
+    this.envoyerWhatsApp(c.expediteurTelephone, msg);
+  }
+
+  imprimerEtiquette(c: Colis | null): void {
+    if (!c) return;
+    const qrUrl = this.getQrUrl(c.qrCode || c.numeroSuivi || '');
+    const printWindow = window.open('', '_blank', 'width=600,height=700');
+    if (!printWindow) return;
+
+    printWindow.document.write(`
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>Étiquette Colis - ${c.numeroSuivi}</title>
+          <style>
+            body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; padding: 24px; text-align: center; color: #0f172a; }
+            .badge { background: #3158f5; color: white; padding: 8px 16px; border-radius: 20px; font-weight: bold; display: inline-block; font-size: 14px; }
+            .card { border: 2px solid #0f172a; border-radius: 16px; padding: 24px; max-width: 400px; margin: 0 auto; }
+            h2 { margin: 12px 0 4px; font-size: 26px; letter-spacing: 1px; color: #0f172a; }
+            .route { font-size: 16px; font-weight: bold; color: #3158f5; margin: 12px 0; }
+            .details { text-align: left; background: #f8fafc; padding: 14px; border-radius: 12px; margin-top: 16px; font-size: 13px; color: #334155; line-height: 1.6; border: 1px solid #e2e8f0; }
+            .qr-img { width: 180px; height: 180px; margin: 16px 0; }
+            @media print { body { padding: 0; } .card { border: 2px solid #000; } }
+          </style>
+        </head>
+        <body>
+          <div class="card">
+            <span class="badge">TransIA Logistique</span>
+            <h2>${c.numeroSuivi}</h2>
+            <div class="route">${c.agenceDepartNom || 'Agence Départ'} &rarr; ${c.agenceArriveeNom || 'Agence Arrivée'}</div>
+            <img src="${qrUrl}" class="qr-img" alt="QR Code Colis" />
+            <p style="font-size: 12px; color: #64748b; margin: 0;">Scannez pour suivre en direct</p>
+            <div class="details">
+              <strong>Expéditeur :</strong> ${c.expediteurNom} (${c.expediteurTelephone})<br/>
+              <strong>Destinataire :</strong> ${c.destinataireNom} (${c.destinataireTelephone})<br/>
+              <strong>Remise :</strong> ${this.getModeRemiseLabel(c.modeRemise)}<br/>
+              ${c.codeRetrait ? `<strong>Code Secret Retrait :</strong> <span style="font-size:16px; font-weight:bold; color:#3158f5;">${c.codeRetrait}</span>` : ''}
+            </div>
+          </div>
+          <script>
+            window.onload = function() {
+              setTimeout(function() { window.print(); }, 500);
+            };
+          </script>
+        </body>
+      </html>
+    `);
+    printWindow.document.close();
   }
 
   private emptyForm(): ColisForm {

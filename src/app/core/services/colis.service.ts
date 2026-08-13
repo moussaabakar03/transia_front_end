@@ -28,6 +28,10 @@ export class ColisService {
     return this.http.get<Colis[]>(`${this.baseUrl}/statut/${statut}`);
   }
 
+  getByTrajet(trajetId: string): Observable<Colis[]> {
+    return this.http.get<Colis[]>(`${this.baseUrl}/trajet/${trajetId}`);
+  }
+
   enregistrerColis(payload: ColisRequest): Observable<Colis> {
     return this.http.post<Colis>(this.baseUrl, payload);
   }
@@ -48,8 +52,10 @@ export class ColisService {
     return this.http.put<Colis>(`${this.baseUrl}/${colisId}/demarrer-livraison`, null, { params: { livreurId } });
   }
 
-  confirmerLivraison(colisId: string): Observable<Colis> {
-    return this.http.put<Colis>(`${this.baseUrl}/${colisId}/confirmer-livraison`, null);
+  confirmerLivraison(colisId: string, codeOtp?: string): Observable<Colis> {
+    return this.http.put<Colis>(`${this.baseUrl}/${colisId}/confirmer-livraison`, null, {
+      params: codeOtp ? { codeOtp } : {}
+    });
   }
 
   getHistorique(colisId: string): Observable<HistoriqueColis[]> {

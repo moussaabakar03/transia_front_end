@@ -116,7 +116,7 @@
                   <button class="btn-table-action collect" (click)="openCharger(c)" title="Charger dans un trajet" *ngIf="canCharger(c)"><span class="material-icons">directions_bus</span></button>
                   <button class="btn-table-action collect" (click)="receptionner(c)" title="Réceptionner" *ngIf="canReceptionner(c)"><span class="material-icons">move_to_inbox</span></button>
                   <button class="btn-table-action assign" (click)="openLivraison(c)" title="Démarrer la livraison" *ngIf="canDemarrerLivraison(c)"><span class="material-icons">person_add</span></button>
-                  <button class="btn-table-action deliver" (click)="confirmerLivraison(c)" title="Confirmer la livraison / le retrait" *ngIf="canConfirmerLivraison(c)"><span class="material-icons">local_shipping</span></button>
+                  <button class="btn-table-action deliver" (click)="openRemise(c)" title="Confirmer la livraison / le retrait" *ngIf="canConfirmerLivraison(c)"><span class="material-icons">local_shipping</span></button>
                   <button class="btn-table-action delete" (click)="annuler(c)" title="Annuler" *ngIf="canCancel(c)"><span class="material-icons">cancel</span></button>
                 </div>
               </td>
@@ -351,15 +351,23 @@
             <span>{{ selectedColis.numeroSuivi }}</span>
           </div>
         </div>
-        <div class="view-qr-block" *ngIf="selectedColis.qrCode">
-          <img [src]="getQrUrl(selectedColis.qrCode)" alt="QR Code" class="colis-qr-img" loading="lazy" />
+        <div class="view-qr-block" *ngIf="selectedColis.numeroSuivi || selectedColis.qrCode">
+          <img [src]="getQrUrl(selectedColis.numeroSuivi || selectedColis.qrCode || '')" alt="QR Code" class="colis-qr-img" loading="lazy" />
           <p class="qr-hint">Scanner pour suivi</p>
         </div>
       </div>
 
       <div class="form-section">
-        <div class="form-section-title"><span class="material-icons">route</span> Trajet</div>
+        <div class="form-section-title"><span class="material-icons">route</span> Trajet &amp; Acheminement</div>
         <div class="view-grid">
+          <div class="detail-item" style="grid-column: 1 / -1; background: #eff6ff; padding: 10px 14px; border-radius: 10px; border: 1px solid #bfdbfe;" *ngIf="selectedColis.trajetId">
+            <div class="detail-item-label" style="color: #1d4ed8; font-weight: 700;">
+              <span class="material-icons" style="font-size: 16px; vertical-align: middle;">directions_bus</span> Trajet assigné (Car / Bus)
+            </div>
+            <div class="detail-item-value fw-medium" style="color: #1e40af; font-size: 14px; margin-top: 2px;">
+              {{ selectedColis.trajetInfo || 'Trajet planifié' }}
+            </div>
+          </div>
           <div class="detail-item">
             <div class="detail-item-label"><span class="material-icons">flight_takeoff</span> Agence départ</div>
             <div class="detail-item-value">{{ selectedColis.agenceDepartNom || '—' }}</div>
@@ -384,11 +392,17 @@
         <div class="view-grid">
           <div class="detail-item">
             <div class="detail-item-label">Expéditeur</div>
-            <div class="detail-item-value fw-medium">{{ selectedColis.expediteurNom }} — {{ selectedColis.expediteurTelephone }}</div>
+            <div class="detail-item-value fw-medium" style="margin-bottom: 6px;">{{ selectedColis.expediteurNom }} — {{ selectedColis.expediteurTelephone }}</div>
+            <button class="btn-wa" (click)="envoyerWhatsAppExpediteur(selectedColis)">
+              <span class="material-icons">chat</span> Notification Expéditeur
+            </button>
           </div>
           <div class="detail-item">
             <div class="detail-item-label">Destinataire</div>
-            <div class="detail-item-value fw-medium">{{ selectedColis.destinataireNom }} — {{ selectedColis.destinataireTelephone }}</div>
+            <div class="detail-item-value fw-medium" style="margin-bottom: 6px;">{{ selectedColis.destinataireNom }} — {{ selectedColis.destinataireTelephone }}</div>
+            <button class="btn-wa" (click)="envoyerWhatsAppDestinataire(selectedColis)">
+              <span class="material-icons">chat</span> Notification Destinataire
+            </button>
           </div>
           <div class="detail-item" style="grid-column:1/-1" *ngIf="selectedColis.destinataireAdresse">
             <div class="detail-item-label"><span class="material-icons">location_on</span> Adresse de livraison</div>
@@ -427,6 +441,9 @@
     </div>
     <div class="modal-actions">
       <button class="btn-cancel" (click)="closeModal()">Fermer</button>
+      <button class="btn-primary" (click)="imprimerEtiquette(selectedColis)">
+        <span class="material-icons">print</span> Imprimer l'étiquette QR
+      </button>
     </div>
   </div>
 </div>
@@ -449,15 +466,21 @@
       <div *ngIf="formError" class="alert-error"><span class="material-icons">error</span> {{ formError }}</div>
       <div class="form-field-full">
         <label>Poids réel pesé (kg) <span class="required">*</span></label>
-        <input type="number" min="0.1" step="0.1" class="form-control" [(ngModel)]="peseePoidsReel" />
+        <div class="input-wrap">
+          <span class="material-icons input-icon">scale</span>
+          <input type="number" min="0.1" step="0.1" class="form-control" placeholder="Entrez le poids réel pesé en kg" [(ngModel)]="peseePoidsReel" />
+        </div>
       </div>
-      <div class="form-field-full">
+      <div class="form-field-full" style="margin-top: 14px;">
         <label>Tranche de poids réelle <span class="required">*</span></label>
-        <select class="form-select" [(ngModel)]="peseeTranche">
-          <option *ngFor="let t of tranches" [value]="t">{{ getTrancheLabel(t) }}</option>
-        </select>
+        <div class="input-wrap">
+          <span class="material-icons input-icon">fitness_center</span>
+          <select class="form-select" [(ngModel)]="peseeTranche">
+            <option *ngFor="let t of tranches" [value]="t">{{ getTrancheLabel(t) }}</option>
+          </select>
+        </div>
       </div>
-      <div class="info-alert">
+      <div class="info-alert" style="margin-top: 16px;">
         <span class="material-icons">info</span>
         <span>Le prix final sera recalculé selon la tranche réelle et marqué comme payé.</span>
       </div>
@@ -490,15 +513,18 @@
     <div class="modal-content-area">
       <div *ngIf="formError" class="alert-error"><span class="material-icons">error</span> {{ formError }}</div>
       <div class="form-field-full">
-        <label>Trajet <span class="required">*</span></label>
-        <select class="form-select" [(ngModel)]="selectedTrajetId">
-          <option value="">— Sélectionner —</option>
-          <option *ngFor="let t of trajetsDisponibles" [value]="t.id">{{ getTrajetLabel(t) }}</option>
-        </select>
+        <label>Trajet programmé <span class="required">*</span></label>
+        <div class="input-wrap">
+          <span class="material-icons input-icon">directions_bus</span>
+          <select class="form-select" [(ngModel)]="selectedTrajetId">
+            <option value="">— Sélectionner un trajet programmé —</option>
+            <option *ngFor="let t of trajetsDisponibles" [value]="t.id">{{ getTrajetLabel(t) }}</option>
+          </select>
+        </div>
       </div>
-      <div *ngIf="trajetsDisponibles.length === 0" class="info-alert">
+      <div *ngIf="trajetsDisponibles.length === 0" class="info-alert" style="margin-top: 14px;">
         <span class="material-icons">info</span>
-        <span>Aucun trajet correspondant à cette liaison d'agences.</span>
+        <span>Aucun trajet programmé disponible pour ce trajet.</span>
       </div>
     </div>
     <div class="modal-actions">
@@ -530,10 +556,13 @@
       <div *ngIf="formError" class="alert-error"><span class="material-icons">error</span> {{ formError }}</div>
       <div class="form-field-full">
         <label>Livreur <span class="required">*</span></label>
-        <select class="form-select" [(ngModel)]="selectedLivreurId">
-          <option value="">— Sélectionner un livreur —</option>
-          <option *ngFor="let l of livreurs" [value]="l.publicId">{{ l.fullName }}</option>
-        </select>
+        <div class="input-wrap">
+          <span class="material-icons input-icon">person</span>
+          <select class="form-select" [(ngModel)]="selectedLivreurId">
+            <option value="">— Sélectionner un livreur —</option>
+            <option *ngFor="let l of livreurs" [value]="l.publicId">{{ l.fullName }}</option>
+          </select>
+        </div>
       </div>
       <div *ngIf="livreurs.length === 0" class="info-alert">
         <span class="material-icons">info</span>
@@ -546,6 +575,53 @@
         <span *ngIf="isSubmitting" class="spinner-small"></span>
         <span *ngIf="!isSubmitting" class="material-icons">check</span>
         {{ isSubmitting ? 'Assignation...' : 'Confirmer' }}
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════
+     MODAL — REMISE DE COLIS AU DESTINATAIRE (OTP)
+     ═══════════════════════════════════════════════ -->
+<div class="modal-overlay" [class.show]="isModalOpen && modalMode === ModalMode.REMISE" (click)="closeModal()">
+  <div class="modal-sheet modal-sheet-sm" role="dialog" (click)="$event.stopPropagation()">
+    <div class="modal-top-bar">
+      <div class="modal-top-icon"><span class="material-icons">verified_user</span></div>
+      <div class="modal-top-title">
+        <h5>Remise du colis au Destinataire</h5>
+        <p>Réf: {{ selectedColis?.numeroSuivi }}</p>
+      </div>
+      <button class="modal-top-close" (click)="closeModal()"><span class="material-icons">close</span></button>
+    </div>
+    <div class="modal-content-area">
+      <div *ngIf="formError" class="alert-error"><span class="material-icons">error</span> {{ formError }}</div>
+
+      <div class="info-alert" style="background:#eff6ff; border-color:#93c5fd; color:#1e40af; margin-bottom: 16px;">
+        <span class="material-icons">person</span>
+        <div>
+          <strong>Destinataire :</strong> {{ selectedColis?.destinataireNom }}<br>
+          <small>Tél: {{ selectedColis?.destinataireTelephone }}</small>
+        </div>
+      </div>
+
+      <div class="form-field-full">
+        <label>Code secret de retrait (OTP à 6 chiffres) <span class="required">*</span></label>
+        <div class="input-wrap">
+          <span class="material-icons input-icon">lock</span>
+          <input type="text" class="form-control" placeholder="Ex: 237163" maxlength="6"
+                 [(ngModel)]="remiseCodeOtp" style="letter-spacing: 4px; font-weight: bold; font-size: 18px; text-align: center;" />
+        </div>
+        <small style="color:#64748b; margin-top: 6px; display: block;">
+          Demandez le code secret à 6 chiffres reçu par SMS / WhatsApp par le destinataire.
+        </small>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-cancel" (click)="closeModal()" [disabled]="isSubmitting">Annuler</button>
+      <button class="btn-primary" (click)="submitRemise()" [disabled]="isSubmitting || !remiseCodeOtp || remiseCodeOtp.length !== 6">
+        <span *ngIf="isSubmitting" class="spinner-small"></span>
+        <span *ngIf="!isSubmitting" class="material-icons">task_alt</span>
+        {{ isSubmitting ? 'Vérification...' : 'Valider la remise' }}
       </button>
     </div>
   </div>

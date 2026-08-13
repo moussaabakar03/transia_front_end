@@ -13,10 +13,15 @@ import { TourneesComponent } from './fonctionnalites/tournees/tournees';
 import { Agences } from './fonctionnalites/agences/agences';
 import { TarifsComponent } from './fonctionnalites/tarifs/tarifs';
 import { DemandesCollecteComponent } from './fonctionnalites/demandes-collecte/demandes-collecte';
+import { SuiviColisComponent } from './fonctionnalites/suivi-colis/suivi-colis';
 
 export const routes: Routes = [
   { path: '', redirectTo: 'login', pathMatch: 'full' },
   { path: 'login', component: Login },
+
+  // Routes publiques (sans authentification)
+  { path: 'suivi/:numeroSuivi',  component: SuiviColisComponent },
+  { path: 'suivi',               component: SuiviColisComponent },
 
   // Routes protégées
   { path: 'tableau-de-bord',     component: TableauDeBord,     canActivate: [authGuard] },

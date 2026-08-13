@@ -45,6 +45,8 @@ export interface HistoriqueColis {
 export interface Colis {
   id?: string;
   numeroSuivi?: string;
+  codeRetrait?: string;
+  lienSuivi?: string;
   description: string;
   tranchePoids: TranchePoids;
   poidsReel?: number;
@@ -68,6 +70,7 @@ export interface Colis {
   agenceArriveeId?: string;
   agenceArriveeNom?: string;
   trajetId?: string;
+  trajetInfo?: string;
   agentEnregistreurId?: string;
   agentEnregistreurNom?: string;
   livreurId?: string;
