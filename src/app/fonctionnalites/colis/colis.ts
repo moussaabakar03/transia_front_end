@@ -521,14 +521,67 @@ export class ColisComponent implements OnInit {
   envoyerWhatsAppDestinataire(c: Colis | null): void {
     if (!c) return;
     const lien = c.lienSuivi || ('http://localhost:4200/suivi/' + c.numeroSuivi);
-    const msg = `Bonjour ${c.destinataireNom},\nUn colis vous est destiné (Réf: ${c.numeroSuivi}).\nCode secret de retrait : ${c.codeRetrait || 'N/A'}.\nSuivez l'état en direct : ${lien}`;
+    const dep = c.agenceDepartNom || 'Agence départ';
+    const arr = c.agenceArriveeNom || 'Agence arrivée';
+    const code = c.codeRetrait || 'N/A';
+    let msg = '';
+
+    switch (c.statut) {
+      case StatutColis.EN_ATTENTE_DEPOT:
+        msg = `Bonjour ${c.destinataireNom},\nUn colis vous a été attribué (Réf: ${c.numeroSuivi}).\nIl est actuellement en attente de pesée à l'agence de départ (${dep}).\nSuivez son évolution en direct : ${lien}`;
+        break;
+      case StatutColis.DEPOSE_EN_AGENCE:
+        msg = `Bonjour ${c.destinataireNom},\nVotre colis (Réf: ${c.numeroSuivi}) a été pesé et enregistré à l'agence de ${dep}.\nIl sera très prochainement embarqué vers ${arr}.\nCode secret de retrait : ${code}.\nSuivi : ${lien}`;
+        break;
+      case StatutColis.EN_TRANSIT:
+        msg = `Bonjour ${c.destinataireNom},\nExcellente nouvelle ! Votre colis (Réf: ${c.numeroSuivi}) est chargé dans le car et en transit vers ${arr}.\nCode secret de retrait : ${code}.\nSuivez le trajet en direct : ${lien}`;
+        break;
+      case StatutColis.ARRIVE_EN_AGENCE:
+        msg = `Bonjour ${c.destinataireNom},\nVotre colis (Réf: ${c.numeroSuivi}) est bien ARRIVÉ à l'agence de ${arr} ! 🎉\nVous pouvez venir le retirer muni de votre pièce d'identité et du Code Secret OTP : ${code}.\nSuivi : ${lien}`;
+        break;
+      case StatutColis.EN_COURS_LIVRAISON:
+        msg = `Bonjour ${c.destinataireNom},\nVotre colis (Réf: ${c.numeroSuivi}) est en cours de livraison vers votre adresse. 🛵\nVeuillez communiquer votre Code Secret OTP (${code}) au livreur lors de la remise.\nSuivi : ${lien}`;
+        break;
+      case StatutColis.LIVRE:
+        msg = `Bonjour ${c.destinataireNom},\nVotre colis (Réf: ${c.numeroSuivi}) vous a été remis avec succès ! Merci d'avoir choisi TransIA. Express & Sécurisé.`;
+        break;
+      default:
+        msg = `Bonjour ${c.destinataireNom},\nConcernant votre colis (Réf: ${c.numeroSuivi}).\nCode secret de retrait : ${code}.\nSuivi : ${lien}`;
+    }
+
     this.envoyerWhatsApp(c.destinataireTelephone, msg);
   }
 
   envoyerWhatsAppExpediteur(c: Colis | null): void {
     if (!c) return;
     const lien = c.lienSuivi || ('http://localhost:4200/suivi/' + c.numeroSuivi);
-    const msg = `Bonjour ${c.expediteurNom},\nVotre colis (Réf: ${c.numeroSuivi}) a bien été pris en charge par TransIA.\nSuivez son état en direct : ${lien}`;
+    const dep = c.agenceDepartNom || 'Agence départ';
+    const arr = c.agenceArriveeNom || 'Agence arrivée';
+    let msg = '';
+
+    switch (c.statut) {
+      case StatutColis.EN_ATTENTE_DEPOT:
+        msg = `Bonjour ${c.expediteurNom},\nVotre colis (Réf: ${c.numeroSuivi}) est enregistré. Rendez-vous à l'agence (${dep}) pour la pesée et le règlement.\nSuivi : ${lien}`;
+        break;
+      case StatutColis.DEPOSE_EN_AGENCE:
+        msg = `Bonjour ${c.expediteurNom},\nVotre colis (Réf: ${c.numeroSuivi}) est pesé et prêt à l'agence de ${dep} pour le départ vers ${arr}.\nSuivi : ${lien}`;
+        break;
+      case StatutColis.EN_TRANSIT:
+        msg = `Bonjour ${c.expediteurNom},\nVotre colis (Réf: ${c.numeroSuivi}) a été embarqué dans le car et est en route vers ${arr}.\nSuivi en direct : ${lien}`;
+        break;
+      case StatutColis.ARRIVE_EN_AGENCE:
+        msg = `Bonjour ${c.expediteurNom},\nVotre colis (Réf: ${c.numeroSuivi}) est arrivé à l'agence de destination (${arr}). Le destinataire (${c.destinataireNom}) a été notifié pour le retrait.\nSuivi : ${lien}`;
+        break;
+      case StatutColis.EN_COURS_LIVRAISON:
+        msg = `Bonjour ${c.expediteurNom},\nLe livreur effectue la livraison du colis (Réf: ${c.numeroSuivi}) au domicile de ${c.destinataireNom}.\nSuivi : ${lien}`;
+        break;
+      case StatutColis.LIVRE:
+        msg = `Bonjour ${c.expediteurNom},\nVotre colis (Réf: ${c.numeroSuivi}) a été livré avec succès au destinataire ${c.destinataireNom}. Merci de votre confiance en TransIA.`;
+        break;
+      default:
+        msg = `Bonjour ${c.expediteurNom},\nSuivi de votre colis (Réf: ${c.numeroSuivi}) : ${lien}`;
+    }
+
     this.envoyerWhatsApp(c.expediteurTelephone, msg);
   }
 
