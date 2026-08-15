@@ -1,0 +1,184 @@
+<div class="public-suivi-wrapper">
+  <!-- Main Container -->
+  <main class="suivi-content">
+    <!-- Hero / Barre de recherche -->
+    <div class="hero-search-card">
+      <h2>Suivez votre colis en temps réel</h2>
+      <p>Entrez votre numéro de suivi au format <strong>TRS-XXXXXX</strong> pour connaître la localisation exacte et l'état d'avancement de votre expédition.</p>
+      
+      <form class="search-box" (ngSubmit)="rechercher()">
+        <div class="input-wrapper">
+          <span class="material-icons search-icon">search</span>
+          <input 
+            type="text" 
+            [(ngModel)]="numeroSuiviSaisi" 
+            name="numeroSuivi"
+            placeholder="Exemple : TRS-892145" 
+            required 
+          />
+        </div>
+        <button type="submit" class="btn-search" [disabled]="isLoading">
+          <span class="material-icons" *ngIf="!isLoading">near_me</span>
+          <span class="spinner" *ngIf="isLoading"></span>
+          <span>{{ isLoading ? 'Recherche...' : 'Suivre mon colis' }}</span>
+        </button>
+      </form>
+    </div>
+
+    <!-- Message de chargement -->
+    <div class="state-card loading-card" *ngIf="isLoading">
+      <div class="pulse-loader"></div>
+      <p>Chargement des informations de votre colis...</p>
+    </div>
+
+    <!-- Message d'erreur -->
+    <div class="state-card error-card" *ngIf="erreur && !isLoading">
+      <div class="error-icon">
+        <span class="material-icons">sentiment_dissatisfied</span>
+      </div>
+      <h3>Colis introuvable</h3>
+      <p>{{ erreur }}</p>
+    </div>
+
+    <!-- Resultats du suivi -->
+    <div class="colis-details-container" *ngIf="colis && !isLoading">
+      <!-- Card d'en-tête de colis -->
+      <div class="colis-main-card">
+        <div class="colis-header-info">
+          <div class="ref-block">
+            <span class="label-ref">Numéro de suivi</span>
+            <div class="ref-code">
+              <h3>{{ colis.numeroSuivi }}</h3>
+              <span class="badge-statut" [ngClass]="getStatutBadgeClass(colis.statut)">
+                {{ getStatutLibelle(colis.statut) }}
+              </span>
+            </div>
+          </div>
+
+          <div class="mode-remise-chip">
+            <span class="material-icons">
+              {{ colis.modeRemise === 'LIVRAISON_DOMICILE' ? 'home_pin' : 'storefront' }}
+            </span>
+            <span>
+              {{ colis.modeRemise === 'LIVRAISON_DOMICILE' ? 'Livraison à Domicile' : 'Retrait en Agence' }}
+            </span>
+          </div>
+        </div>
+
+        <!-- Timeline Stepper -->
+        <div class="stepper-wrapper">
+          <div class="stepper-track"></div>
+          <div 
+            class="stepper-item" 
+            *ngFor="let step of steps; let idx = index"
+            [class.completed]="isStepCompleted(idx)"
+            [class.active]="isStepActive(idx)"
+          >
+            <div class="step-circle">
+              <span class="material-icons">{{ step.icon }}</span>
+            </div>
+            <span class="step-label">{{ step.label }}</span>
+          </div>
+        </div>
+
+        <!-- Banner quand LIVRÉ -->
+        <div class="banner-livre" *ngIf="colis.statut === 'LIVRE'">
+          <div class="banner-icon">
+            <span class="material-icons">verified</span>
+          </div>
+          <div class="banner-text">
+            <h4>Colis livré avec succès !</h4>
+            <p>Livré le {{ colis.dateLivraison | date:'dd/MM/yyyy à HH:mm' }}</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Grille des informations détaillées -->
+      <div class="details-grid">
+        <!-- Informations Agences & Trajet -->
+        <div class="info-card">
+          <div class="card-header">
+            <span class="material-icons">alt_route</span>
+            <h4>Itinéraire du colis</h4>
+          </div>
+          <div class="card-body route-flow">
+            <div class="location-box">
+              <span class="dot depart"></span>
+              <div>
+                <span class="title">Agence de Départ</span>
+                <strong>{{ colis.agenceDepartNom || 'Agence de départ' }}</strong>
+              </div>
+            </div>
+            <div class="route-line">
+              <span class="material-icons">arrow_downward</span>
+            </div>
+            <div class="location-box">
+              <span class="dot arrivee"></span>
+              <div>
+                <span class="title">Agence Destination / Retrait</span>
+                <strong>{{ colis.agenceArriveeNom || 'Agence destination' }}</strong>
+              </div>
+            </div>
+            <div class="location-box" style="background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 10px; padding: 10px; margin-top: 12px;" *ngIf="colis.trajetInfo">
+              <span class="material-icons" style="color: #2563eb; font-size: 20px;">directions_bus</span>
+              <div>
+                <span class="title" style="color: #1d4ed8; font-weight: 700; display: block; font-size: 11px;">TRAJET EN BUS ASSIGNÉ</span>
+                <strong style="color: #1e40af; font-size: 13px;">{{ colis.trajetInfo }}</strong>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Code de Retrait / QR Code -->
+        <div class="info-card qr-retrait-card">
+          <div class="card-header">
+            <span class="material-icons">qr_code_2</span>
+            <h4>Retrait & Authentification</h4>
+          </div>
+          <div class="card-body qr-content">
+            <div class="otp-box" *ngIf="colis.codeRetrait">
+              <span class="otp-label">Code secret de retrait</span>
+              <div class="otp-digits">{{ colis.codeRetrait }}</div>
+              <p class="otp-hint">Présentez ce code secret à l'agent de l'agence ou au livreur lors de la remise.</p>
+            </div>
+            <div class="qr-visual">
+              <span class="qr-title-label">OU SCANNER LE QR CODE</span>
+              <div class="qr-image-wrapper">
+                <img [src]="getQrUrl(colis.numeroSuivi || colis.qrCode || '')" alt="QR Code de suivi et retrait" class="qr-real-img" />
+              </div>
+              <span class="qr-code-text">{{ colis.numeroSuivi }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Historique chronologique des événements -->
+      <div class="history-card" *ngIf="colis.historique && colis.historique.length > 0">
+        <div class="card-header">
+          <span class="material-icons">history</span>
+          <h4>Historique des événements</h4>
+        </div>
+        <div class="card-body">
+          <ul class="timeline-list">
+            <li class="timeline-item" *ngFor="let h of colis.historique">
+              <div class="timeline-dot"></div>
+              <div class="timeline-content">
+                <div class="timeline-top">
+                  <strong class="h-statut">{{ getStatutLibelle(h.nouveauStatut) }}</strong>
+                  <span class="h-date">{{ h.dateChangement | date:'dd/MM/yyyy HH:mm' }}</span>
+                </div>
+                <p class="h-comment" *ngIf="h.commentaire">{{ h.commentaire }}</p>
+                <span class="h-user" *ngIf="h.utilisateurNom">Par : {{ h.utilisateurNom }}</span>
+              </div>
+            </li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- Footer -->
+  <footer class="suivi-footer">
+    <p>© {{ currentYear }} TransIA — Tous droits réservés. Service de transport & logistique inter-villes.</p>
+  </footer>
+</div>

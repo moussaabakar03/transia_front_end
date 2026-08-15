@@ -15,6 +15,8 @@ import { Ville } from '../../../shared/models/ville';
 import { Vehicule } from '../../../shared/models/vehicule';
 import { Reservation, StatutReservation } from '../../../shared/models/reservation.model';
 import { ReservationService } from '../../../core/services/reservation-service';
+import { ColisService } from '../../../core/services/colis.service';
+import { Colis } from '../../../shared/models/colis.model';
 
 @Component({
   selector: 'app-trajets',
@@ -36,9 +38,12 @@ export class Trajets implements OnInit {
   trajetEditer: any = null;
   trajetVoir: Trajet | null = null;
 
-  // Réservations liées au trajet consulté (modale détail) + statistiques dérivées
+  // Réservations & Colis liés au trajet consulté (modale détail)
   reservationsDuTrajet: Reservation[] = [];
   chargementReservationsTrajet = false;
+  colisDuTrajet: Colis[] = [];
+  chargementColisTrajet = false;
+  poidsTotalColis = 0;
   statsTrajet: {
     placesReservees: number;
     placesDisponibles: number;
@@ -103,7 +108,8 @@ export class Trajets implements OnInit {
     private vehiculeService:     VehiculeService,
     private userService:         UserService,
     private currentUser:         CurrentUserService,
-    private reservationService:  ReservationService
+    private reservationService:  ReservationService,
+    private colisService:        ColisService
   ) {}
 
   ngOnInit(): void {
@@ -444,11 +450,13 @@ export class Trajets implements OnInit {
     });
   }
 
-  // Voir le détail d'un trajet, avec ses réservations liées et quelques statistiques dérivées
+  // Voir le détail d'un trajet, avec ses réservations et la liste des colis à bord
   ouvrirDetail(trajet: Trajet): void {
     this.trajetVoir = trajet;
     this.afficherDetailTrajet = true;
     this.reservationsDuTrajet = [];
+    this.colisDuTrajet = [];
+    this.poidsTotalColis = 0;
     this.statsTrajet = null;
 
     if (!trajet.id) return;
@@ -463,6 +471,19 @@ export class Trajets implements OnInit {
       error: (err) => {
         console.error('Erreur de chargement des réservations du trajet', err);
         this.chargementReservationsTrajet = false;
+      }
+    });
+
+    this.chargementColisTrajet = true;
+    this.colisService.getByTrajet(trajet.id).subscribe({
+      next: (colisList) => {
+        this.colisDuTrajet = colisList || [];
+        this.poidsTotalColis = this.colisDuTrajet.reduce((sum, c) => sum + (c.poidsReel || 0), 0);
+        this.chargementColisTrajet = false;
+      },
+      error: (err) => {
+        console.error('Erreur de chargement des colis du trajet', err);
+        this.chargementColisTrajet = false;
       }
     });
   }

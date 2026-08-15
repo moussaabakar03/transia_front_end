@@ -18,7 +18,9 @@ export const jwtInterceptor: HttpInterceptorFn = (req, next) => {
   const router = inject(Router);
 
   const urlSansQuery = req.url.split('?')[0];
-  if (ROUTES_PUBLIQUES.includes(urlSansQuery)) {
+  const isSuiviPublic = urlSansQuery.includes('/colis/suivi/');
+
+  if (ROUTES_PUBLIQUES.includes(urlSansQuery) || isSuiviPublic) {
     return next(req);
   }
 
@@ -27,8 +29,8 @@ export const jwtInterceptor: HttpInterceptorFn = (req, next) => {
   return next(reqAvecToken).pipe(
     catchError((error: HttpErrorResponse) => {
 
-      // 401 = token absent/expiré/invalide — pas de flux de refresh côté backend, on déconnecte
-      if (error.status === 401) {
+      // 401 = token absent/expiré/invalide — pas de flux de refresh côté backend, on déconnecte sauf sur page publique
+      if (error.status === 401 && !isSuiviPublic) {
         authService.logout();
         router.navigate(['/login']);
         return throwError(() => error);

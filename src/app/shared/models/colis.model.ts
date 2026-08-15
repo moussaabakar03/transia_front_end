@@ -10,6 +10,7 @@ export enum TranchePoids {
 
 export enum StatutColis {
   EN_ATTENTE_DEPOT = 'EN_ATTENTE_DEPOT',
+  EN_ATTENTE_COLLECTE = 'EN_ATTENTE_COLLECTE',
   DEPOSE_EN_AGENCE = 'DEPOSE_EN_AGENCE',
   EN_TRANSIT = 'EN_TRANSIT',
   ARRIVE_EN_AGENCE = 'ARRIVE_EN_AGENCE',
@@ -45,6 +46,8 @@ export interface HistoriqueColis {
 export interface Colis {
   id?: string;
   numeroSuivi?: string;
+  codeRetrait?: string;
+  lienSuivi?: string;
   description: string;
   tranchePoids: TranchePoids;
   poidsReel?: number;
@@ -68,6 +71,7 @@ export interface Colis {
   agenceArriveeId?: string;
   agenceArriveeNom?: string;
   trajetId?: string;
+  trajetInfo?: string;
   agentEnregistreurId?: string;
   agentEnregistreurNom?: string;
   livreurId?: string;
