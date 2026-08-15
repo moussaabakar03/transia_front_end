@@ -449,6 +449,7 @@ export class ColisComponent implements OnInit {
   getStatutConfig(s: StatutColis): { label: string; css: string } {
     const map: Record<StatutColis, { label: string; css: string }> = {
       [StatutColis.EN_ATTENTE_DEPOT]:     { label: 'En attente de dépôt', css: 'st-attente' },
+      [StatutColis.EN_ATTENTE_COLLECTE]:  { label: 'En attente de collecte', css: 'st-attente' },
       [StatutColis.DEPOSE_EN_AGENCE]:     { label: 'Déposé en agence',    css: 'st-charge'  },
       [StatutColis.EN_TRANSIT]:           { label: 'En transit',          css: 'st-transit' },
       [StatutColis.ARRIVE_EN_AGENCE]:     { label: 'Arrivé en agence',    css: 'st-collecte'},
@@ -490,7 +491,7 @@ export class ColisComponent implements OnInit {
     return map[t] || t;
   }
 
-  canPeser(c: Colis): boolean { return c.statut === StatutColis.EN_ATTENTE_DEPOT; }
+  canPeser(c: Colis): boolean { return c.statut === StatutColis.EN_ATTENTE_DEPOT || c.statut === StatutColis.EN_ATTENTE_COLLECTE; }
   canCharger(c: Colis): boolean { return c.statut === StatutColis.DEPOSE_EN_AGENCE; }
   canReceptionner(c: Colis): boolean { return c.statut === StatutColis.EN_TRANSIT; }
   canDemarrerLivraison(c: Colis): boolean {
